@@ -1,6 +1,28 @@
-//Paydrop allows a sponsor to fund multiple addresses that can pull a paydrop
+// Copyright 2024 Aptos Paydrop
+// MIT LICENSE
+// Permission is hereby granted, free of charge, to any person obtaining a 
+// copy of this software and associated documentation files (the “Software”)
+// , to deal in the Software without restriction, including without 
+// limitation the rights to use, copy, modify, merge, publish, distribute, 
+// sublicense, and/or sell copies of the Software, and to permit persons to 
+// whom the Software is furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included
+//  in all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR 
+// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+// OTHER DEALINGS IN THE SOFTWARE.
+
+
+//Paydrop allows a sponsor to transfer to multiple addresses using a single transaction
 //scaled with zkp the supported amount is 500k addresses with a single transaction
-//The use-cases are AirDrops,QuadraticFunding,Mass Payments,Salaries
+//The use-cases are AirDrops,QuadraticFunding,Mass Payouts,Salaries
+//The deposited payments have to be pulled.
 
 //I want to create a smart contract where a user can deposit a FungibleAsset with a Merkle Tree Root
 //And addresses that are in the merkle tree can withdraw a partial deposit using a zero knowledge proof with groth-16
@@ -13,7 +35,7 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
-
+    use std::vector;
     use aptos_std::smart_table::{Self, SmartTable};
 
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
@@ -30,6 +52,8 @@ module paydrop_addr::paydrop {
     const ERR_INVALID_ROOT: u64 = 6;
     const ERR_DROPTREE_EMPTY: u64 = 7;
     const ERR_TOO_MANY_LEAVES: u64 = 8;
+    const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9;
+    const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10;
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -69,15 +93,13 @@ module paydrop_addr::paydrop {
         extend_ref: ExtendRef
     }
 
-
-    struct VerificationKey has key{
-        vk_alpha_g1 : Element,
-        vk_beta_g2 : Element,
-        vk_gamma_g2 : Element,
-        vk_delta_g2 : Element,
+    struct VerificationKey has key {
+        vk_alpha_g1: Element,
+        vk_beta_g2: Element,
+        vk_gamma_g2: Element,
+        vk_delta_g2: Element,
         vk_gamma_abc_g1: Element
     }
-
 
     //Global per contract
     struct Config has key {
@@ -88,9 +110,7 @@ module paydrop_addr::paydrop {
         //The withdraw fee
         fee: u64,
         //The verification elements are set by the contract_creator using an init function
-        vkey: Option<VerificationKey.
-
-
+        vkey: Option<VerificationKey>
     }
 
     #[event]
@@ -128,6 +148,13 @@ module paydrop_addr::paydrop {
         merkle_root: u256
     }
 
+    #[event]
+    //A disabled droptree can be enabled
+    struct DropTreeEnabled has drop, store {
+        sponsor: address,
+        merkle_root: u256
+    }
+
     /// If you deploy the module under an object, sender is the object's signer
     /// If you deploy the module under your own account, sender is your account's signer
     fun init_module(sender: &signer) {
@@ -156,48 +183,6 @@ module paydrop_addr::paydrop {
             }
         );
     }
-
-    // Initialize the zkp proving verification key parameters after publishing the module
-    public entry fun initialize_vkey(
-        vk_alpha_x: u256,
-        vk_alpha_y: u256,
-        vk_beta_x1: u256,
-        vk_beta_x1: u256,
-        vk_beta_x2: u256,
-        vk_beta_y2: u256,
-        vk_gamma_x1: u256,
-        kv_gamma_y1: u256,
-        vk_gamma_x2: u256,
-        vk_gamma_y2: u256
-        //TODO: refactor args to a single vector and unpack it inside the function
-        ) acquires Config{
-        // TODO: The signer can be only the contract creator
-        let vk_alpha_bytes = bcs::to_bytes<u256>(&vk_alpha_x);
-        let vk_alpha_y_bytes = bcs::to_bytes<u256>(&vk_alpha_y);
-        vector::append(&mut vk_alpha_bytes,vk_alpha_y_bytes);
-        let vk_alpha = std::option::extract(&mut deserialize<bn254_algebra::G1, bn254_algebra::FormatG1Uncompr>(&vk_alpha_bytes));
-
-        let vk_beta_bytes = bcs::to_bytes<u256>(&vk_beta_x1);
-        let vk_beta_y1_bytes = bcs::to_bytes<u256>(&vk_beta_y1);
-        let vk_beta_x2_bytes = bcs::to_bytes<u256>(&vk_beta_x2);
-        let vk_beta_y2_bytes = bcs::to_bytes<u256>(&vk_beta_y2);
-        vector::append(&mut vk_beta_bytes, vk_beta_y1_bytes);
-        vector::append(&mut vk_beta_bytes, vk_beta_x2_bytes);
-        vector::append(&mut vk_beta_bytes, vk_beta_y2_bytes);
-        let vk_beta = std::option::extract(&mut deserialize<bn254_algebra::G2, bn254_algebra::FormatG2Uncompr>(&vk_beta_bytes));
-
-        let vk_gamma_bytes = bcs::to_bytes<u256>(&vk_gamma_x1);
-        let vk_gamma_y1_bytes = bcs::to_bytes<u256>(&vk_gamma_y1);
-        let vk_gamma_x2_bytes = bcs::to_bytes<u256>(&vk_gamma_x2);
-        let vk_gamma_y2_bytes = bcs::to_bytes<u256>(&vk_gamma_y2);
-        vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
-        vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
-        vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
-        let vk_gamma = std::option::extract(&mut deserialize<bn254_algebra::G2, bn254_algebra::FormatG2Uncompr>(&vk_gamma_bytes));
-
-
-    }
-
 
     //I want to initialize the drop tree for the sponsor
     //This should create the first deposit If it doesn't exists
@@ -308,14 +293,26 @@ module paydrop_addr::paydrop {
     //Claim a paydrop by proving the sender address is contained in the merkle root
     // The merkle root leaf is hash(sender address, withdraw amount),
     //The remaining arguments are a circom ZKP
-    
+    //TODO: this needs the zkp
     public entry fun claim_paydrop(sender: &signer) acquires Forest, FungibleStoreController, Config {
-
     }
 
-    //TODO: Only owner functions to update the fee and the address that recieves the fee
+    //Enable a drop tree, only allow enable if there is deposit
+    public entry fun enable_droptree(sender: &signer, root: u256) acquires Forest {
+        let sender_addr = signer::address_of(sender);
+        let forest = get_forest_for_update(sender_addr);
+        let droptree = smart_table::borrow_mut(forest.trees, root);
 
-    //TODO: Enable and disable the drop tree, only allow enable if there is deposit
+        assert!(droptree.enabled == false, ERR_DROPTREEE_ALREADY_ENABLED);
+        assert!(droptree.deposits_left > 0, ERR_NO_DEPOSIT_TO_ENABLE);
+
+        droptree.enabled = true;
+
+        event::emit(
+            DropTreeEnabled { sponsor: sender_addr, merkle_root: root }
+        )
+
+    }
 
     //Mutable Borrow an existing droptree or create a new one, returns the Forest and isNew
     fun get_or_create_droptree(
@@ -387,7 +384,7 @@ module paydrop_addr::paydrop {
     /// - Verification key: $\left([\alpha]_1, [\beta]_2, [\gamma]_2, [\delta]_2, \left\\{ \left[ \frac{\beta \cdot u_i(x) + \alpha \cdot v_i(x) + w_i(x)}{\gamma} \right]_1 \right\\}\_{i=0}^l \right)$.
     /// - Public inputs: $\\{a_i\\}_{i=1}^l$.
     /// - Proof $\left( \left[ A \right]_1, \left[ B \right]_2, \left[ C \right]_1 \right)$.
-    public fun verify_proof<G1,G2,Gt,S>(
+    public fun verify_proof<G1, G2, Gt, S>(
         vk_alpha_g1: &Element<G1>,
         vk_beta_g2: &Element<G2>,
         vk_gamma_g2: &Element<G2>,
@@ -396,15 +393,105 @@ module paydrop_addr::paydrop {
         public_inputs: &vector<Element<S>>,
         proof_a: &Element<G1>,
         proof_b: &Element<G2>,
-        proof_c: &Element<G1>,
+        proof_c: &Element<G1>
     ): bool {
-        let left = pairing<G1,G2,Gt>(proof_a, proof_b);
+        let left = pairing<G1, G2, Gt>(proof_a, proof_b);
         let scalars = vector[from_u64<S>(1)];
         std::vector::append(&mut scalars, *public_inputs);
         let right = zero<Gt>();
-        let right = add(&right, &pairing<G1,G2,Gt>(vk_alpha_g1, vk_beta_g2));
-        let right = add(&right, &pairing(&multi_scalar_mul(vk_uvw_gamma_g1, &scalars), vk_gamma_g2));
+        let right = add(
+            &right,
+            &pairing<G1, G2, Gt>(vk_alpha_g1, vk_beta_g2)
+        );
+        let right =
+            add(
+                &right,
+                &pairing(&multi_scalar_mul(vk_uvw_gamma_g1, &scalars), vk_gamma_g2)
+            );
         let right = add(&right, &pairing(proof_c, vk_delta_g2));
         eq(&left, &right)
+    }
+
+    // Initialize the zkp proving verification key parameters after publishing the module
+    //TODO:based on this: https://github.com/aptos-labs/aptos-core/blob/main/aptos-move/move-examples/groth16_example/sources/groth16.move
+    //TODO: I need to create the circuit before I proceed, to know exactly how many V_alphabeta I got e.g: how many inputs will be used (I think 2)
+    public entry fun initialize_vkey(
+        sender: &signer,
+        alpha: vector<u256>, //size is 2
+        beta: vector<u256>, // size is 4
+        gamma: vector<u256>, // size is 4
+        delta: vector<u256> //size is 4
+    
+        //TODO: refactor args to a single vector and unpack it inside the function
+    ) acquires Config {
+        // TODO: The signer can be only the contract creator
+
+        let vk_alpha_x = *vector::borrow(alpha,0);
+        let vk_alpha_y = *vector::borrow(alpha,1);
+
+
+        let vk_alpha_bytes = bcs::to_bytes<u256>(&vk_alpha_x);
+        let vk_alpha_y_bytes = bcs::to_bytes<u256>(&vk_alpha_y);
+        vector::append(&mut vk_alpha_bytes, vk_alpha_y_bytes);
+        let vk_alpha =
+            std::option::extract(
+                &mut deserialize<bn254_algebra::G1, bn254_algebra::FormatG1Uncompr>(
+                    &vk_alpha_bytes
+                )
+            );
+
+        let vk_beta_x1 = *vector::borrow(beta,0);
+        let vk_beta_y1 = *vector::borrow(beta,1);
+        let vk_beta_x2 = *vector::borrow(beta,2);
+        let vk_beta_y2 = *vector::borrow(beta,3);
+
+
+        let vk_beta_bytes = bcs::to_bytes<u256>(&vk_beta_x1);
+        let vk_beta_y1_bytes = bcs::to_bytes<u256>(&vk_beta_y1);
+        let vk_beta_x2_bytes = bcs::to_bytes<u256>(&vk_beta_x2);
+        let vk_beta_y2_bytes = bcs::to_bytes<u256>(&vk_beta_y2);
+        vector::append(&mut vk_beta_bytes, vk_beta_y1_bytes);
+        vector::append(&mut vk_beta_bytes, vk_beta_x2_bytes);
+        vector::append(&mut vk_beta_bytes, vk_beta_y2_bytes);
+        let vk_beta =
+            std::option::extract(
+                &mut deserialize<bn254_algebra::G2, bn254_algebra::FormatG2Uncompr>(
+                    &vk_beta_bytes
+                )
+            );
+
+        let vk_gamma_x1 = *vector::borrow(gamma,0);
+        let vk_gamma_y1 = *vector::borrow(gamma,1);
+        let vk_gamma_x2 = *vector::borrow(gamma,2);
+        let vk_gamma_y2 = *vector::borrow(gamma,3);
+
+        let vk_gamma_bytes = bcs::to_bytes<u256>(&vk_gamma_x1);
+        let vk_gamma_y1_bytes = bcs::to_bytes<u256>(&vk_gamma_y1);
+        let vk_gamma_x2_bytes = bcs::to_bytes<u256>(&vk_gamma_x2);
+        let vk_gamma_y2_bytes = bcs::to_bytes<u256>(&vk_gamma_y2);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
+        let vk_gamma =
+            std::option::extract(
+                &mut deserialize<bn254_algebra::G2, bn254_algebra::FormatG2Uncompr>(
+                    &vk_gamma_bytes
+                )
+            );
+
+        let vk_delta_x1 = *vector::borrow(delta,0);
+        let vk_delta_y1 = *vector::borrow(delta,1);
+        let vk_delta_x2 = *vector::borrow(delta,2);
+        let vk_delta_y2 = *vector::borrow(delta,3);
+        let vk_delta_bytes = bcs::to_bytes<u256>(&vk_delta_x1);
+        let vk_delta_y1_bytes = bcs::to_bytes<u256>(&vk_delta_y1);
+        let vk_delta_x2_bytes = bcs::to_bytes<u256>(&vk_delta_x2);
+        let vk_delta_y2_bytes = bcs::to_bytes<u256>(&vk_delta_y2);
+        vector::append(&mut vk_delta_bytes, vk_delta_y1_bytes);
+        vector::append(&mut vk_delta_bytes, vk_delta_x2_bytes);
+        vector::append(&mut vk_delta_bytes, vk_delta_y2_bytes);
+        let vk_delta = std::option::extract(&mut deserialize<bn254_algebra::G2, bn254_algebra::FormatG2Uncompr>(&vk_delta_bytes));
+
+        //TODO: next is IC, the vk_alphabeta_12 is not used in the example at all
     }
 }
