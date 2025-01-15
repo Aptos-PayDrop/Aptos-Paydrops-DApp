@@ -33,6 +33,9 @@
 
 module paydrop_addr::paydrop {
     use std::signer;
+    use std::bcs;
+    use std::vector;
+    use std::option::{Self,Option};
 
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
     use aptos_framework::primary_fungible_store;
@@ -47,9 +50,22 @@ module paydrop_addr::paydrop {
         eq,
         pairing,
         add,
-        zero
+        zero,
+        deserialize
     };
-  
+
+    use aptos_std::bn254_algebra::{
+        Fr,
+        FormatFrLsb,
+        FormatG1Compr,
+        FormatG2Compr,
+        G1,
+        G2,
+        Gt,
+        FormatG1Uncompr,
+        FormatG2Uncompr
+    };
+
     /// Sponsor account has not been set up to create Forest
     const ESPONSOR_ACCOUNT_NOT_INITIALIZED: u64 = 1;
     const EDROPTREE_NOT_FOUND: u64 = 2;
@@ -300,8 +316,30 @@ module paydrop_addr::paydrop {
     // The merkle root leaf is hash(sender address, withdraw amount),
     //The remaining arguments are a circom ZKP
     //TODO: this needs the zkp
-    // public entry fun claim_paydrop(sender: &signer) acquires Forest, FungibleStoreController, Config {
-    // }
+    public entry fun claim_paydrop(
+        sender: &signer,
+        sponsor: address,
+        root: u256,
+        amount: u64,
+        proof: vector<u256> // Contains 8 elements
+    ) {
+        //I get the address of the sender
+        let sender_addr = signer::address_of(sender);
+        //Check if the droptree for the sponsor exists
+        //check if it is enabled
+
+        //Check if the sender is nullified or not
+
+        //then verify the proof
+
+        //Do the withdraw
+
+        // nullify the sender
+
+        //write everything back
+
+        //emit an event
+    }
 
     //Enable a drop tree, only allow enable if there is deposit
     public entry fun enable_droptree(sender: &signer, root: u256) acquires Forest {
@@ -370,7 +408,49 @@ module paydrop_addr::paydrop {
         )
     }
 
-    /// SOURCE: https://github.com/aptos-labs/aptos-core/blob/main/aptos-move/move-examples/groth16_example/sources/groth16.move
+    inline fun convert_proof_input(proof: vector<u256>):(Element<G1>,Element<G2>,Element<G1>) {
+        let a_x = proof[0];
+        let a_y = proof[1];
+        let b_x1 = proof[2];
+        let b_y1 = proof[3];
+        let b_x2 = proof[4];
+        let b_y2 = proof[5];
+        let c_x = proof[6];
+        let c_y = proof[7];
+
+        let a_bytes = bcs::to_bytes<u256>(&a_x);
+        let a_y_bytes = bcs::to_bytes<u256>(&a_y);
+        vector::append(&mut a_bytes, a_y_bytes);
+        let a = std::option::extract(
+            &mut deserialize<G1, FormatG1Uncompr>(&a_bytes)
+        );
+
+        let b_bytes = bcs::to_bytes<u256>(&b_x1);
+        let b_y1_bytes = bcs::to_bytes<u256>(&b_y1);
+        let b_x2_bytes = bcs::to_bytes<u256>(&b_x2);
+        let b_y2_bytes = bcs::to_bytes<u256>(&b_y2);
+        vector::append(&mut b_bytes, b_y1_bytes);
+        vector::append(&mut b_bytes, b_x2_bytes);
+        vector::append(&mut b_bytes, b_y2_bytes);
+        let b = std::option::extract(
+            &mut deserialize<G2, FormatG2Uncompr>(&b_bytes)
+        );
+
+        let c_bytes = bcs::to_bytes<u256>(&c_x);
+        let c_y_bytes = bcs::to_bytes<u256>(&c_y);
+        vector::append(&mut c_bytes, c_y_bytes);
+        let c = std::option::extract(
+            &mut deserialize<G1, FormatG1Uncompr>(&c_bytes)
+        );
+
+        (a, b, c)
+    }
+
+    inline fun convert_public_signal(
+        recipeint: address, amount: u64, root: u256
+    ) {}
+
+    /// SOURCE: https://github.com/aptos-labs/aptos-core/blobmain/aptos-move/move-examples/groth16_example/sources/groth16.move
     /// Proof verification as specified in the original paper,
     /// with the following input (in the original paper notations).
     /// - Verification key: $\left([\alpha]_1, [\beta]_2, [\gamma]_2, [\delta]_2, \left\\{ \left[ \frac{\beta \cdot u_i(x) + \alpha \cdot v_i(x) + w_i(x)}{\gamma} \right]_1 \right\\}\_{i=0}^l \right)$.
@@ -404,10 +484,18 @@ module paydrop_addr::paydrop {
         eq(&left, &right)
     }
 
-      #[test_only]
+    #[test_only]
     use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
     #[test_only]
-    use aptos_std::bn254_algebra::{Fr, FormatFrLsb, FormatG1Compr, FormatG2Compr, G1, G2, Gt};
+    use aptos_std::bn254_algebra::{
+        Fr,
+        FormatFrLsb,
+        FormatG1Compr,
+        FormatG2Compr,
+        G1,
+        G2,
+        Gt
+    };
     #[test_only]
     use std::vector;
 
@@ -415,38 +503,60 @@ module paydrop_addr::paydrop {
     fun test_verify_proof_with_bn254(fx: signer) {
         enable_cryptography_algebra_natives(&fx);
 
-        let vk_alpha_g1 = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
-        let vk_beta_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
-        let vk_gamma_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
-        let vk_delta_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
+        let vk_alpha_g1 =
+            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
+        let vk_beta_g2 =
+            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
+        let vk_gamma_g2 =
+            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
+        let vk_delta_g2 =
+            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
         let vk_gamma_abc_g1_bytes = __VK_GAMMA_ABC_G1__;
         let public_inputs_bytes = __VK_PUBLIC_INPUTS__;
-        assert!(vector::length(&public_inputs_bytes) + 1 == vector::length(&vk_gamma_abc_g1_bytes), 1);
+        assert!(
+            vector::length(&public_inputs_bytes) + 1
+                == vector::length(&vk_gamma_abc_g1_bytes),
+            1
+        );
 
-        let vk_gamma_abc_g1 = std::vector::map(vk_gamma_abc_g1_bytes, |item| {
-            let bytes: vector<u8> = item;
-            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
-        });
+        let vk_gamma_abc_g1 =
+            std::vector::map(
+                vk_gamma_abc_g1_bytes,
+                |item| {
+                    let bytes: vector<u8> = item;
+                    std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
+                }
+            );
 
-        let public_inputs = std::vector::map(public_inputs_bytes, |item| {
-            let bytes: vector<u8> = item;
-            std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
-        });
+        let public_inputs =
+            std::vector::map(
+                public_inputs_bytes,
+                |item| {
+                    let bytes: vector<u8> = item;
+                    std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
+                }
+            );
 
-        let proof_a = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
-        let proof_b = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
-        let proof_c = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
+        let proof_a =
+            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
+        let proof_b =
+            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
+        let proof_c =
+            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
 
-        assert!(verify_proof<G1, G2, Gt, Fr>(
-            &vk_alpha_g1,
-            &vk_beta_g2,
-            &vk_gamma_g2,
-            &vk_delta_g2,
-            &vk_gamma_abc_g1,
-            &public_inputs,
-            &proof_a,
-            &proof_b,
-            &proof_c,
-        ), 1);
+        assert!(
+            verify_proof<G1, G2, Gt, Fr>(
+                &vk_alpha_g1,
+                &vk_beta_g2,
+                &vk_gamma_g2,
+                &vk_delta_g2,
+                &vk_gamma_abc_g1,
+                &public_inputs,
+                &proof_a,
+                &proof_b,
+                &proof_c
+            ),
+            1
+        );
     }
 }
