@@ -328,7 +328,6 @@ module paydrop_addr::paydrop {
 
     #[view]
     // return the total number of drop rees per sponsor
-    //TODO:refactor to totaltrees
     public fun total_trees(sponsor: address): u64 acquires Forest {
         let forest = get_forest(sponsor);
         smart_table::length(&forest.trees)
@@ -356,15 +355,15 @@ module paydrop_addr::paydrop {
         smart_table::contains(&selected_tree.nullifiers, recipient)
     }
 
-    inline fun tree_selector(sponsor: address, root: u256): DropTree {
+    inline fun tree_selector(sponsor: address, root: u256): &DropTree {
         let forest = get_forest(sponsor);
         assert!(smart_table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
-        *smart_table::borrow(&forest.trees, root)
+        smart_table::borrow(&forest.trees, root)
     }
 
-    inline fun get_forest(sponsor: address): Forest {
+    inline fun get_forest(sponsor: address): &Forest {
         assert!(exists<Forest>(sponsor), ESPONSOR_ACCOUNT_NOT_INITIALIZED);
-        *borrow_global<Forest>(sponsor)
+        borrow_global<Forest>(sponsor)
     }
 
     inline fun get_forest_for_update(sponsor: address): &mut Forest {
