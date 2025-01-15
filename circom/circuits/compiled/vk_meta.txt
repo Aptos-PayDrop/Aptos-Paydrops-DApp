@@ -1,0 +1,1 @@
+circuits/compiled/zkeys/circuit_0000.zkey

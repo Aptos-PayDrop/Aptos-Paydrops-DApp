@@ -1,0 +1,45 @@
+
+import { buildHashImplementation } from "../lib/index.js";
+import assert from "assert";
+import { encodeForCircuit, generateMerkleProof, generateMerkleTree, getMerkleRootFromMerkleProof, populateTree } from "../lib/merkletree.js";
+/**
+ * This is a test input, generated for the starting circuit.
+ * If you update the inputs, you need to update this function to match it.
+ */
+export async function getInput(){
+    await buildHashImplementation();
+    
+        const size = 9;
+        
+        
+        const { addresses, amounts, commitments, } = await populateTree(size)
+
+        const merkleTree = await generateMerkleTree(structuredClone(commitments));
+
+        const merkleProof = await generateMerkleProof(commitments[0], structuredClone(commitments),null);
+
+        const merkleRoot = await getMerkleRootFromMerkleProof(merkleProof);
+        assert.equal(merkleTree.root, merkleRoot)
+
+        const encodedProof = encodeForCircuit(merkleProof);
+
+        return {
+            address: addresses[0],
+            amount : amounts[0],
+            
+            pathElements: encodedProof.pathElements, 
+            pathIndices: encodedProof.pathIndices,
+            root: merkleRoot,
+            commitmentHash: commitments[0],
+            
+        }
+        
+}
+
+// Assert the output for hotreload by returning the expected output
+// Edit this to fit your circuit
+export async function getOutput() {
+    return { out: 0 }
+}
+
+        

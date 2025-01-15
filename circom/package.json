@@ -1,0 +1,25 @@
+{
+  "name": "circom",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit",
+    "new": "node ./lib/run.js new",
+    "proof": "node ./lib/run.js proof",
+    "verify": "node ./lib/run.js verify"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "circom_tester": "^0.0.20",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "ffjavascript": "^0.3.0",
+    "snarkjs": "^0.7.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

@@ -33,19 +33,23 @@
 
 module paydrop_addr::paydrop {
     use std::signer;
-    use std::bcs;
-    use std::vector;
-    use std::option::{Self, Option};
 
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
     use aptos_framework::primary_fungible_store;
-    use aptos_framework::object::{Self, Object, ExtendRef, ObjectCore};
+    use aptos_framework::object::{Self, Object, ExtendRef};
     use aptos_framework::event;
 
     use aptos_std::smart_table::{Self, SmartTable};
-    // use aptos_std::crypto_algebra::{deserialize, Element, from_u64, multi_scalar_mul, eq, multi_pairing, upcast, pairing, add, zero};
-    // use aptos_std::bn254_algebra::{Fr, FormatFrLsb, FormatG1Compr, FormatG2Compr,FormatG2Uncompr, G1, G2, Gt};
-
+    use aptos_std::crypto_algebra::{
+        Element,
+        from_u64,
+        multi_scalar_mul,
+        eq,
+        pairing,
+        add,
+        zero
+    };
+  
     /// Sponsor account has not been set up to create Forest
     const ESPONSOR_ACCOUNT_NOT_INITIALIZED: u64 = 1;
     const EDROPTREE_NOT_FOUND: u64 = 2;
@@ -57,7 +61,6 @@ module paydrop_addr::paydrop {
     const ERR_TOO_MANY_LEAVES: u64 = 8;
     const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9;
     const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10;
-
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -97,15 +100,6 @@ module paydrop_addr::paydrop {
         extend_ref: ExtendRef
     }
 
-    //TODO: THis is not gonna work because G1 can't be stored?
-    // struct VerificationKey has key {
-    //     vk_alpha_g1: Element<G1>,
-    //     vk_beta_g2: Element<G2>,
-    //     vk_gamma_g2: Element<G2>,
-    //     vk_delta_g2: Element<G2>,
-    //     vk_uvw_gamma_g1: vector<Element<G1>>
-    // }
-
     //Global per contract
     struct Config has key {
         //The Creator can update the fee manager address
@@ -115,7 +109,6 @@ module paydrop_addr::paydrop {
         //The withdraw fee
         fee: u64
         //The verification elements are set by the contract_creator using an init function
-        // vkey: Option<VerificationKey>
     }
 
     #[event]
@@ -174,7 +167,6 @@ module paydrop_addr::paydrop {
                 //Arguments injected using move.compile or publish
                 fee_manager_address: @fee_manager_address,
                 fee: 0
-                // vkey: option::none()
             }
         );
 
@@ -317,7 +309,7 @@ module paydrop_addr::paydrop {
         let forest = get_forest_for_update(sender_addr);
         let droptree = smart_table::borrow_mut(&mut forest.trees, root);
 
-        assert!(droptree.enabled == false, ERR_DROPTREEE_ALREADY_ENABLED);
+        assert!(!droptree.enabled, ERR_DROPTREEE_ALREADY_ENABLED);
         assert!(droptree.deposit_left > 0, ERR_NO_DEPOSIT_TO_ENABLE);
 
         droptree.enabled = true;
@@ -384,114 +376,77 @@ module paydrop_addr::paydrop {
     /// - Verification key: $\left([\alpha]_1, [\beta]_2, [\gamma]_2, [\delta]_2, \left\\{ \left[ \frac{\beta \cdot u_i(x) + \alpha \cdot v_i(x) + w_i(x)}{\gamma} \right]_1 \right\\}\_{i=0}^l \right)$.
     /// - Public inputs: $\\{a_i\\}_{i=1}^l$.
     /// - Proof $\left( \left[ A \right]_1, \left[ B \right]_2, \left[ C \right]_1 \right)$.
-    // public fun verify_proof<G1, G2, Gt, S>(
-    //     vk_alpha_g1: &Element<G1>,
-    //     vk_beta_g2: &Element<G2>,
-    //     vk_gamma_g2: &Element<G2>,
-    //     vk_delta_g2: &Element<G2>,
-    //     vk_uvw_gamma_g1: &vector<Element<G1>>,
-    //     public_inputs: &vector<Element<S>>,
-    //     proof_a: &Element<G1>,
-    //     proof_b: &Element<G2>,
-    //     proof_c: &Element<G1>
-    // ): bool {
-    //     let left = pairing<G1, G2, Gt>(proof_a, proof_b);
-    //     let scalars = vector[from_u64<S>(1)];
-    //     std::vector::append(&mut scalars, *public_inputs);
-    //     let right = zero<Gt>();
-    //     let right = add(
-    //         &right,
-    //         &pairing<G1, G2, Gt>(vk_alpha_g1, vk_beta_g2)
-    //     );
-    //     let right =
-    //         add(
-    //             &right,
-    //             &pairing(&multi_scalar_mul(vk_uvw_gamma_g1, &scalars), vk_gamma_g2)
-    //         );
-    //     let right = add(&right, &pairing(proof_c, vk_delta_g2));
-    //     eq(&left, &right)
-    // }
+    public fun verify_proof<G1, G2, Gt, S>(
+        vk_alpha_g1: &Element<G1>,
+        vk_beta_g2: &Element<G2>,
+        vk_gamma_g2: &Element<G2>,
+        vk_delta_g2: &Element<G2>,
+        vk_uvw_gamma_g1: &vector<Element<G1>>,
+        public_inputs: &vector<Element<S>>,
+        proof_a: &Element<G1>,
+        proof_b: &Element<G2>,
+        proof_c: &Element<G1>
+    ): bool {
+        let left = pairing<G1, G2, Gt>(proof_a, proof_b);
+        let scalars = vector[from_u64<S>(1)];
+        std::vector::append(&mut scalars, *public_inputs);
+        let right = zero<Gt>();
+        let right = add(
+            &right,
+            &pairing<G1, G2, Gt>(vk_alpha_g1, vk_beta_g2)
+        );
+        let right =
+            add(
+                &right,
+                &pairing(&multi_scalar_mul(vk_uvw_gamma_g1, &scalars), vk_gamma_g2)
+            );
+        let right = add(&right, &pairing(proof_c, vk_delta_g2));
+        eq(&left, &right)
+    }
 
-    // Initialize the zkp proving verification key parameters after publishing the module
-    //TODO:based on this: https://github.com/aptos-labs/aptos-core/blob/main/aptos-move/move-examples/groth16_example/sources/groth16.move
-    //TODO: I need to create the circuit before I proceed, to know exactly how many V_alphabeta I got e.g: how many inputs will be used (I think 2)
-    // public entry fun initialize_vkey(
-    //     sender: &signer,
-    //     alpha: vector<u256>, //size is 2
-    //     beta: vector<u256>, // size is 4
-    //     gamma: vector<u256>, // size is 4
-    //     delta: vector<u256> //size is 4
+      #[test_only]
+    use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
+    #[test_only]
+    use aptos_std::bn254_algebra::{Fr, FormatFrLsb, FormatG1Compr, FormatG2Compr, G1, G2, Gt};
+    #[test_only]
+    use std::vector;
 
-    //     //TODO: refactor args to a single vector and unpack it inside the function
-    // ) acquires Config {
-    //     // TODO: The signer can be only the contract creator
+    #[test(fx = @std)]
+    fun test_verify_proof_with_bn254(fx: signer) {
+        enable_cryptography_algebra_natives(&fx);
 
-    //     enable_cryptography_algebra_natives(&sender);
+        let vk_alpha_g1 = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
+        let vk_beta_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
+        let vk_gamma_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
+        let vk_delta_g2 = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
+        let vk_gamma_abc_g1_bytes = __VK_GAMMA_ABC_G1__;
+        let public_inputs_bytes = __VK_PUBLIC_INPUTS__;
+        assert!(vector::length(&public_inputs_bytes) + 1 == vector::length(&vk_gamma_abc_g1_bytes), 1);
 
-    //     let vk_alpha_x = *vector::borrow(alpha,0);
-    //     let vk_alpha_y = *vector::borrow(alpha,1);
+        let vk_gamma_abc_g1 = std::vector::map(vk_gamma_abc_g1_bytes, |item| {
+            let bytes: vector<u8> = item;
+            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
+        });
 
-    //     let vk_alpha_bytes = bcs::to_bytes<u256>(&vk_alpha_x);
-    //     let vk_alpha_y_bytes = bcs::to_bytes<u256>(&vk_alpha_y);
-    //     vector::append(&mut vk_alpha_bytes, vk_alpha_y_bytes);
-    //     let vk_alpha =
-    //         std::option::extract(
-    //             &mut deserialize<G1, FormatG1Uncompr>(
-    //                 &vk_alpha_bytes
-    //             )
-    //         );
+        let public_inputs = std::vector::map(public_inputs_bytes, |item| {
+            let bytes: vector<u8> = item;
+            std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
+        });
 
-    //     let vk_beta_x1 = *vector::borrow(beta,0);
-    //     let vk_beta_y1 = *vector::borrow(beta,1);
-    //     let vk_beta_x2 = *vector::borrow(beta,2);
-    //     let vk_beta_y2 = *vector::borrow(beta,3);
+        let proof_a = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
+        let proof_b = std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
+        let proof_c = std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
 
-    //     let vk_beta_bytes = bcs::to_bytes<u256>(&vk_beta_x1);
-    //     let vk_beta_y1_bytes = bcs::to_bytes<u256>(&vk_beta_y1);
-    //     let vk_beta_x2_bytes = bcs::to_bytes<u256>(&vk_beta_x2);
-    //     let vk_beta_y2_bytes = bcs::to_bytes<u256>(&vk_beta_y2);
-    //     vector::append(&mut vk_beta_bytes, vk_beta_y1_bytes);
-    //     vector::append(&mut vk_beta_bytes, vk_beta_x2_bytes);
-    //     vector::append(&mut vk_beta_bytes, vk_beta_y2_bytes);
-    //     let vk_beta =
-    //         std::option::extract(
-    //             &mut deserialize<G2, FormatG2Uncompr>(
-    //                 &vk_beta_bytes
-    //             )
-    //         );
-
-    //     let vk_gamma_x1 = *vector::borrow(gamma,0);
-    //     let vk_gamma_y1 = *vector::borrow(gamma,1);
-    //     let vk_gamma_x2 = *vector::borrow(gamma,2);
-    //     let vk_gamma_y2 = *vector::borrow(gamma,3);
-
-    //     let vk_gamma_bytes = bcs::to_bytes<u256>(&vk_gamma_x1);
-    //     let vk_gamma_y1_bytes = bcs::to_bytes<u256>(&vk_gamma_y1);
-    //     let vk_gamma_x2_bytes = bcs::to_bytes<u256>(&vk_gamma_x2);
-    //     let vk_gamma_y2_bytes = bcs::to_bytes<u256>(&vk_gamma_y2);
-    //     vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
-    //     vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
-    //     vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
-    //     let vk_gamma =
-    //         std::option::extract(
-    //             &mut deserialize<G2, FormatG2Uncompr>(
-    //                 &vk_gamma_bytes
-    //             )
-    //         );
-
-    //     let vk_delta_x1 = *vector::borrow(delta,0);
-    //     let vk_delta_y1 = *vector::borrow(delta,1);
-    //     let vk_delta_x2 = *vector::borrow(delta,2);
-    //     let vk_delta_y2 = *vector::borrow(delta,3);
-    //     let vk_delta_bytes = bcs::to_bytes<u256>(&vk_delta_x1);
-    //     let vk_delta_y1_bytes = bcs::to_bytes<u256>(&vk_delta_y1);
-    //     let vk_delta_x2_bytes = bcs::to_bytes<u256>(&vk_delta_x2);
-    //     let vk_delta_y2_bytes = bcs::to_bytes<u256>(&vk_delta_y2);
-    //     vector::append(&mut vk_delta_bytes, vk_delta_y1_bytes);
-    //     vector::append(&mut vk_delta_bytes, vk_delta_x2_bytes);
-    //     vector::append(&mut vk_delta_bytes, vk_delta_y2_bytes);
-    //     let vk_delta = std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_delta_bytes));
-
-    //     //TODO: next is IC, the vk_alphabeta_12 is not used in the example at all
-    // }
+        assert!(verify_proof<G1, G2, Gt, Fr>(
+            &vk_alpha_g1,
+            &vk_beta_g2,
+            &vk_gamma_g2,
+            &vk_delta_g2,
+            &vk_gamma_abc_g1,
+            &public_inputs,
+            &proof_a,
+            &proof_b,
+            &proof_c,
+        ), 1);
+    }
 }

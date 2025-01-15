@@ -1,12 +1,9 @@
 [package]
-name = "StakePoolTemplate"
+name = "PayDrops"
 version = "1.0.0"
 authors = []
 
 [addresses]
-stake_pool_addr = "0x1"
-fa_obj_addr = "0x1"
-initial_reward_creator_addr = "0x1"
 fee_manager_address="0x1"
 paydrop_addr="0x1"
 
