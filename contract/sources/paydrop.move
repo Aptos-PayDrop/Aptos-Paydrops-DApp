@@ -409,14 +409,14 @@ module paydrop_addr::paydrop {
     }
 
     inline fun convert_proof_input(proof: vector<u256>):(Element<G1>,Element<G2>,Element<G1>) {
-        let a_x = proof[0];
-        let a_y = proof[1];
-        let b_x1 = proof[2];
-        let b_y1 = proof[3];
-        let b_x2 = proof[4];
-        let b_y2 = proof[5];
-        let c_x = proof[6];
-        let c_y = proof[7];
+        let a_x = *vector::borrow(&proof,0);
+        let a_y = *vector::borrow(&proof,1);
+        let b_x1 = *vector::borrow(&proof,2);
+        let b_y1 = *vector::borrow(&proof,3);
+        let b_x2 = *vector::borrow(&proof,4);
+        let b_y2 = *vector::borrow(&proof,5);
+        let c_x = *vector::borrow(&proof,6);
+        let c_y = *vector::borrow(&proof,7);
 
         let a_bytes = bcs::to_bytes<u256>(&a_x);
         let a_y_bytes = bcs::to_bytes<u256>(&a_y);
