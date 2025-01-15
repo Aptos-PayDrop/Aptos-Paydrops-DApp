@@ -123,17 +123,17 @@ fn main() {
 
     let snarkjs_public_input_str = read_file_to_string(&snarkjs_public_input_path).unwrap();
     let snarkjs_public_input: SnarkJsGroth16PublicInput = serde_json::from_str(&snarkjs_public_input_str).unwrap();
-    copy_dir_all(Path::new("groth16_module_template"), Path::new(out_dir.as_str())).unwrap();
+    copy_dir_all(Path::new("contract"), Path::new(out_dir.as_str())).unwrap();
 
     let output = Command::new("bash")
         .envs(std::env::vars())
         .arg("-c")
-        .arg(format!("rsync -a groth16_module_template/ {}/", out_dir))
+        .arg(format!("rsync -a contract/ {}/", out_dir))
         .output()
         .unwrap();
     assert!(output.status.success());
 
-    let move_module_path = format!("{out_dir}/sources/groth16.move");
+    let move_module_path = format!("{out_dir}/sources/paydrop.move");
     let template = fs::read_to_string(&move_module_path).unwrap();
     let populated = template
         .replace("__VK_ALPHA_G1__", &Some(&snarkjs_vk.vk_alpha_1).map(as_g1_proj).map(into_aptos_move_bytes_expr).unwrap())

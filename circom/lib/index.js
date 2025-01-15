@@ -55,25 +55,20 @@ export async function hashLeaves(left, right) {
     
 /**
  * @param {Object} options - The arguments for the compute proof
- * @param {bigint | string} options.secret - The secret used for the commitment reveal scheme
- * @param {bigint | string} options.nullifier
  * @param {Array<bigint> | Array<string>} options.pathElements
  * @param {Array<number>} options.pathIndices
  * 
  * @param {Object} options.publicInputs
  * @param {bigint | string} options.publicInputs.commitmentHash
- * @param {bigint | string} options.publicInputs.nullifierHash - The nullifier used for mitigating replay attacks * 
  * @param {bigint | string} options.publicInputs.root - The root hash of the merkle tree
 
  * @param {Object | undefined} options.snarkArtifacts - Paths to the artifacts used for generating the proof. If undefined, default values will be used. It allows for file system paths and urls.
  * @param {string} options.snarkArtifacts.wasmFilePath - Path to the generated witness file
  * @param {string} options.snarkArtifacts.zkeyFilePath - Path to the generated zKey file
  */ 
-export async function computeProof({secret, nullifier,pathElements, pathIndices,  publicInputs, snarkArtifacts}){
+export async function computeProof({pathElements, pathIndices,  publicInputs, snarkArtifacts}){
     const input = {
       //Private inputs
-      secret,
-      nullifier,
       pathElements, pathIndices, 
       
       //Public inputs
