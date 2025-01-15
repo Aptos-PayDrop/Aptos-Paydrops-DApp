@@ -42,7 +42,8 @@ module paydrop_addr::paydrop {
     use aptos_framework::object::{Self, Object, ExtendRef};
     use aptos_framework::event;
 
-    use aptos_std::smart_table::{Self, SmartTable};
+    use aptos_std::table::{Self,Table};
+
     use aptos_std::crypto_algebra::{
         Element,
         from_u64,
@@ -77,6 +78,13 @@ module paydrop_addr::paydrop {
     const ERR_TOO_MANY_LEAVES: u64 = 8;
     const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9;
     const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10;
+    const ERR_INVALID_SPONSOR:u64 = 11;
+    const ERR_DROPTREE_DISABLED: u64 = 12;
+    const ERR_ALREADY_NULLIFIED: u64 = 13;
+    const ERR_INVALID_AMOUNT: u64 = 14;
+    const ERR_NO_MORE_LEAVES: u64 = 15;
+    const ONLY_CREATOR :u64 = 16;
+    const ERR_EXCEEDS_MAX_FEE:u64 = 17;
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -86,7 +94,7 @@ module paydrop_addr::paydrop {
         deposit_left: u64,
 
         //The addresses that withdrew paydrop are in the nullifiers
-        nullifiers: SmartTable<address, bool>,
+        nullifiers: Table<address, bool>,
 
         //Total bottom leaves of the merkle tree each represent a withdraw
         total_leaves: u64,
@@ -107,7 +115,8 @@ module paydrop_addr::paydrop {
     struct Forest has key {
         //A single sponsor can create multiple trees
         //The trees can be accessed using the root hash of the merkle tree
-        trees: SmartTable<u256, DropTree>
+        trees: Table<u256, DropTree>,
+        size: u64
     }
 
     //Global per contract
@@ -197,6 +206,24 @@ module paydrop_addr::paydrop {
         );
     }
 
+    //The creator of the contact can set the fee_manager_address
+    public entry fun set_fee_manager(sender: &signer, new_fee_manager: address) acquires Config{
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == @paydrop_addr,ONLY_CREATOR);
+        let config = borrow_global_mut<Config>(sender_addr);
+        config.fee_manager_address = new_fee_manager;
+    }
+
+    // The creator can set the fees that are sent to the fee manager
+    public entry fun set_fee(sender: &signer,new_fee:u64) acquires Config{
+       let sender_addr = signer::address_of(sender);
+       assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+       //Max fee limit is 25%
+       assert!(new_fee < 25,ERR_EXCEEDS_MAX_FEE);
+       let config = borrow_global_mut<Config>(sender_addr);
+       config.fee = new_fee;
+    }
+
     //I want to initialize the drop tree for the sponsor
     //This should create the first deposit If it doesn't exists
     public entry fun new_droptree(
@@ -239,7 +266,7 @@ module paydrop_addr::paydrop {
         let droptree = DropTree {
             total_deposit,
             deposit_left: total_deposit,
-            nullifiers: smart_table::new(),
+            nullifiers: table::new(),
             total_leaves,
             unused_leaves: total_leaves,
             fa_metadata_object: fa_metadata,
@@ -252,12 +279,12 @@ module paydrop_addr::paydrop {
             let forest = get_forest_for_update(sender_addr);
 
             //If the droptree was not new, this should update the mutable reference and add a new droptree
-            smart_table::add(&mut forest.trees, root, droptree);
-
+            table::add(&mut forest.trees, root, droptree);
+            forest.size = forest.size + 1;
         } else {
-            let newForest = Forest { trees: smart_table::new() };
+            let newForest = Forest { trees: table::new(),size: 1 };
 
-            smart_table::add(&mut newForest.trees, root, droptree);
+            table::add(&mut newForest.trees, root, droptree);
 
             move_to(sender, newForest)
 
@@ -282,9 +309,9 @@ module paydrop_addr::paydrop {
         let forest = get_forest_for_update(sender_addr);
 
         //make sure the root and the droptree exists
-        assert!(smart_table::contains(&forest.trees, root), ERR_INVALID_ROOT);
+        assert!(table::contains(&forest.trees, root), ERR_INVALID_ROOT);
 
-        let droptree = smart_table::borrow_mut(&mut forest.trees, root);
+        let droptree = table::borrow_mut(&mut forest.trees, root);
         //Take the left over deposits
         let deposit_left = droptree.deposit_left;
         //assert there are deposits left
@@ -315,37 +342,86 @@ module paydrop_addr::paydrop {
     //Claim a paydrop by proving the sender address is contained in the merkle root
     // The merkle root leaf is hash(sender address, withdraw amount),
     //The remaining arguments are a circom ZKP
-    //TODO: this needs the zkp
     public entry fun claim_paydrop(
         sender: &signer,
         sponsor: address,
         root: u256,
         amount: u64,
         proof: vector<u256> // Contains 8 elements
-    ) {
+    ) acquires Forest,FungibleStoreController,Config{
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
-        //Check if the droptree for the sponsor exists
-        //check if it is enabled
+        //Check if the forest for the sponsor exists
+        assert!(exists<Forest>(sponsor),ERR_INVALID_SPONSOR);
+        //Get a mutable forest and check if the droptree with the root exists
+        let forest = get_forest_for_update(sponsor);
+
+        assert!(table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
+
+        //borrow mutable
+        let droptree = table::borrow_mut(&mut forest.trees,root);
+
+        //Check if it's enabled
+        assert!(droptree.enabled,ERR_DROPTREE_DISABLED);
 
         //Check if the sender is nullified or not
 
-        //then verify the proof
+        assert!(!table::contains(&droptree.nullifiers,sender_addr),ERR_ALREADY_NULLIFIED);
+        assert!(amount > 0,ERR_AMOUNT_ZERO);
+        assert!(root >0, ERR_INVALID_ROOT);
+        assert!(droptree.deposit_left - amount >= 0,ERR_INVALID_AMOUNT);
+        assert!(droptree.unused_leaves !=0,ERR_NO_MORE_LEAVES);
+        //convert proof input
+        let (a,b,c) = convert_proof_input(proof);
 
-        //Do the withdraw
+        //TODO: verify proof
 
+        
+        //Fees calculations
+        let (finalAmount,fee) = calculate_fees(amount);
+
+        //Do the withdraw to the recipient
+        fungible_asset::transfer(
+            &generate_fungible_store_signer(),
+            droptree.deposit_store,
+            primary_fungible_store::ensure_primary_store_exists(
+                sender_addr,droptree.fa_metadata_object
+            ),
+            finalAmount
+        );
+
+        //Transfer the fee to the fee manager
+        fungible_asset::transfer(
+            &generate_fungible_store_signer(),
+            droptree.deposit_store,
+            primary_fungible_store::ensure_primary_store_exists(
+                @paydrop_addr, droptree.fa_metadata_object
+            ),
+            fee
+        );
+ 
         // nullify the sender
+        table::add(&mut droptree.nullifiers,sender_addr,true);
 
-        //write everything back
+        //write everything back 
+        droptree.deposit_left = droptree.deposit_left - amount;
+
+        droptree.unused_leaves = droptree.unused_leaves -1;        
 
         //emit an event
+        event::emit(DropClaimed{
+            sponsor,
+            merkle_root: root,
+            recipient: sender_addr,
+            amount
+        });
     }
 
     //Enable a drop tree, only allow enable if there is deposit
     public entry fun enable_droptree(sender: &signer, root: u256) acquires Forest {
         let sender_addr = signer::address_of(sender);
         let forest = get_forest_for_update(sender_addr);
-        let droptree = smart_table::borrow_mut(&mut forest.trees, root);
+        let droptree = table::borrow_mut(&mut forest.trees, root);
 
         assert!(!droptree.enabled, ERR_DROPTREEE_ALREADY_ENABLED);
         assert!(droptree.deposit_left > 0, ERR_NO_DEPOSIT_TO_ENABLE);
@@ -360,7 +436,7 @@ module paydrop_addr::paydrop {
     // return the total number of drop rees per sponsor
     public fun total_trees(sponsor: address): u64 acquires Forest {
         let forest = get_forest(sponsor);
-        smart_table::length(&forest.trees)
+        forest.size
     }
 
     #[view]
@@ -382,13 +458,23 @@ module paydrop_addr::paydrop {
     ): bool acquires Forest {
         let selected_tree = tree_selector(sponsor, root);
         //Returns if the nullifiers contains the recipient address
-        smart_table::contains(&selected_tree.nullifiers, recipient)
+        table::contains(&selected_tree.nullifiers, recipient)
     }
+    
+    #[view]
+    public fun calculate_fees(amount: u64): (u64,u64) acquires Config{
+        let config = borrow_global<Config>(@paydrop_addr);
+        let onePercent = amount / 100;
+        let fee = config.fee * onePercent;
+        let finalAmount = amount - fee;
+        (finalAmount,fee)
+    }
+
 
     inline fun tree_selector(sponsor: address, root: u256): &DropTree {
         let forest = get_forest(sponsor);
-        assert!(smart_table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
-        smart_table::borrow(&forest.trees, root)
+        assert!(table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
+        table::borrow(&forest.trees, root)
     }
 
     inline fun get_forest(sponsor: address): &Forest {
@@ -401,12 +487,21 @@ module paydrop_addr::paydrop {
         borrow_global_mut<Forest>(sponsor)
     }
 
+    
     // Generate signer to send value from fungible stores
     fun generate_fungible_store_signer(): signer acquires FungibleStoreController {
         object::generate_signer_for_extending(
             &borrow_global<FungibleStoreController>(@paydrop_addr).extend_ref
         )
     }
+
+
+    
+    //TODO: get the vkey for the verification
+    // inline fun get_vkey():(Element<G1>){}
+
+    //TODO:
+    // inline fun convert_public_input(recipient: address, amount: u64, root: u256){}
 
     inline fun convert_proof_input(proof: vector<u256>):(Element<G1>,Element<G2>,Element<G1>) {
         let a_x = *vector::borrow(&proof,0);
@@ -445,10 +540,6 @@ module paydrop_addr::paydrop {
 
         (a, b, c)
     }
-
-    inline fun convert_public_signal(
-        recipeint: address, amount: u64, root: u256
-    ) {}
 
     /// SOURCE: https://github.com/aptos-labs/aptos-core/blobmain/aptos-move/move-examples/groth16_example/sources/groth16.move
     /// Proof verification as specified in the original paper,
