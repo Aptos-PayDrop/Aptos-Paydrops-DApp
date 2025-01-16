@@ -35,14 +35,16 @@ module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
     use std::vector;
-    use std::option::{Self,Option};
-
+    use std::option::{Self, Option};
+    use std::string;
+    use std::string_utils;
+   
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::object::{Self, Object, ExtendRef};
     use aptos_framework::event;
 
-    use aptos_std::table::{Self,Table};
+    use aptos_std::table::{Self, Table};
 
     use aptos_std::crypto_algebra::{
         Element,
@@ -78,13 +80,13 @@ module paydrop_addr::paydrop {
     const ERR_TOO_MANY_LEAVES: u64 = 8;
     const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9;
     const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10;
-    const ERR_INVALID_SPONSOR:u64 = 11;
+    const ERR_INVALID_SPONSOR: u64 = 11;
     const ERR_DROPTREE_DISABLED: u64 = 12;
     const ERR_ALREADY_NULLIFIED: u64 = 13;
     const ERR_INVALID_AMOUNT: u64 = 14;
     const ERR_NO_MORE_LEAVES: u64 = 15;
-    const ONLY_CREATOR :u64 = 16;
-    const ERR_EXCEEDS_MAX_FEE:u64 = 17;
+    const ONLY_CREATOR: u64 = 16;
+    const ERR_EXCEEDS_MAX_FEE: u64 = 17;
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -134,6 +136,33 @@ module paydrop_addr::paydrop {
         //The withdraw fee
         fee: u64
         //The verification elements are set by the contract_creator using an init function
+    }
+
+    struct VerificationKey has key{
+        vk_alpha_x: u256,
+        vk_alpha_y: u256,
+        vk_beta_x1: u256,
+        vk_beta_y1: u256,
+        vk_beta_x2: u256,
+        vk_beta_y2: u256,
+        vk_gamma_x1: u256,
+        vk_gamma_y1: u256,
+        vk_gamma_x2: u256,
+        vk_gamma_y2: u256,
+        vk_delta_x1: u256,
+        vk_delta_y1: u256,
+        vk_delta_x2: u256,
+        vk_delta_y2: u256,
+        vk_gamma_abc_1_x: u256,
+        vk_gamma_abc_1_y: u256,
+        vk_gamma_abc_2_x: u256,
+        vk_gamma_abc_2_y: u256,
+        vk_gamma_abc_3_x: u256,
+        vk_gamma_abc_3_y: u256,
+        vk_gamma_abc_4_x: u256,
+        vk_gamma_abc_4_y: u256,
+        vk_gamma_abc_5_x: u256,
+        vk_gamma_abc_5_y: u256,
     }
 
     #[event]
@@ -205,23 +234,88 @@ module paydrop_addr::paydrop {
             }
         );
     }
+    
+    //It's a vector with size 24, that contains the vkey parametes
+    //All the naming comes from the verification_key except the Ic has been renamed to vk_gamma_abc
+    //The naming convention is copied from the example groth-16 verifier code
+    public entry fun initialize_vkey(sender :&signer,vkey: vector<u256>){
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+        let vk_alpha_x = *vector::borrow(&vkey,0);
+        let vk_alpha_y = *vector::borrow(&vkey,1);
+
+        let vk_beta_x1 = *vector::borrow(&vkey,2);
+        let vk_beta_y1 = *vector::borrow(&vkey,3);
+        let vk_beta_x2 = *vector::borrow(&vkey,4);
+        let vk_beta_y2 = *vector::borrow(&vkey,5);
+
+        let vk_gamma_x1 = *vector::borrow(&vkey,6);
+        let vk_gamma_y1 = *vector::borrow(&vkey,7);
+        let vk_gamma_x2 = *vector::borrow(&vkey,8);
+        let vk_gamma_y2 = *vector::borrow(&vkey,9);
+
+        let vk_delta_x1 = *vector::borrow(&vkey,10);
+        let vk_delta_y1 = *vector::borrow(&vkey,11);
+        let vk_delta_x2 = *vector::borrow(&vkey,12);
+        let vk_delta_y2 = *vector::borrow(&vkey,13);
+
+        let vk_gamma_abc_1_x = *vector::borrow(&vkey,14);
+        let vk_gamma_abc_1_y = *vector::borrow(&vkey,15);
+        let vk_gamma_abc_2_x = *vector::borrow(&vkey,16);
+        let vk_gamma_abc_2_y = *vector::borrow(&vkey,17);
+        let vk_gamma_abc_3_x = *vector::borrow(&vkey,18);
+        let vk_gamma_abc_3_y = *vector::borrow(&vkey,19);
+        let vk_gamma_abc_4_x = *vector::borrow(&vkey,20);
+        let vk_gamma_abc_4_y = *vector::borrow(&vkey,21);
+        let vk_gamma_abc_5_x = *vector::borrow(&vkey,22);
+        let vk_gamma_abc_5_y = *vector::borrow(&vkey,23);
+        
+        move_to(sender,VerificationKey{
+            vk_alpha_x,
+            vk_alpha_y,
+            vk_beta_x1,
+            vk_beta_y1,
+            vk_beta_x2,
+            vk_beta_y2,
+            vk_gamma_x1,
+            vk_gamma_y1,
+            vk_gamma_x2,
+            vk_gamma_y2,
+            vk_delta_x1,
+            vk_delta_y1,
+            vk_delta_x2,
+            vk_delta_y2,
+            vk_gamma_abc_1_x,
+            vk_gamma_abc_1_y,
+            vk_gamma_abc_2_x,
+            vk_gamma_abc_2_y,
+            vk_gamma_abc_3_x,
+            vk_gamma_abc_3_y,
+            vk_gamma_abc_4_x,
+            vk_gamma_abc_4_y,
+            vk_gamma_abc_5_x,
+            vk_gamma_abc_5_y
+        });
+     }
 
     //The creator of the contact can set the fee_manager_address
-    public entry fun set_fee_manager(sender: &signer, new_fee_manager: address) acquires Config{
+    public entry fun set_fee_manager(
+        sender: &signer, new_fee_manager: address
+    ) acquires Config {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @paydrop_addr,ONLY_CREATOR);
+        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
         let config = borrow_global_mut<Config>(sender_addr);
         config.fee_manager_address = new_fee_manager;
     }
 
     // The creator can set the fees that are sent to the fee manager
-    public entry fun set_fee(sender: &signer,new_fee:u64) acquires Config{
-       let sender_addr = signer::address_of(sender);
-       assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
-       //Max fee limit is 25%
-       assert!(new_fee < 25,ERR_EXCEEDS_MAX_FEE);
-       let config = borrow_global_mut<Config>(sender_addr);
-       config.fee = new_fee;
+    public entry fun set_fee(sender: &signer, new_fee: u64) acquires Config {
+        let sender_addr = signer::address_of(sender);
+        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+        //Max fee limit is 25%
+        assert!(new_fee < 25, ERR_EXCEEDS_MAX_FEE);
+        let config = borrow_global_mut<Config>(sender_addr);
+        config.fee = new_fee;
     }
 
     //I want to initialize the drop tree for the sponsor
@@ -282,7 +376,7 @@ module paydrop_addr::paydrop {
             table::add(&mut forest.trees, root, droptree);
             forest.size = forest.size + 1;
         } else {
-            let newForest = Forest { trees: table::new(),size: 1 };
+            let newForest = Forest { trees: table::new(), size: 1 };
 
             table::add(&mut newForest.trees, root, droptree);
 
@@ -348,44 +442,50 @@ module paydrop_addr::paydrop {
         root: u256,
         amount: u64,
         proof: vector<u256> // Contains 8 elements
-    ) acquires Forest,FungibleStoreController,Config{
+    ) acquires Forest, FungibleStoreController, Config {
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
         //Check if the forest for the sponsor exists
-        assert!(exists<Forest>(sponsor),ERR_INVALID_SPONSOR);
+        assert!(exists<Forest>(sponsor), ERR_INVALID_SPONSOR);
         //Get a mutable forest and check if the droptree with the root exists
         let forest = get_forest_for_update(sponsor);
 
         assert!(table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
 
         //borrow mutable
-        let droptree = table::borrow_mut(&mut forest.trees,root);
+        let droptree = table::borrow_mut(&mut forest.trees, root);
 
         //Check if it's enabled
-        assert!(droptree.enabled,ERR_DROPTREE_DISABLED);
+        assert!(droptree.enabled, ERR_DROPTREE_DISABLED);
 
         //Check if the sender is nullified or not
 
-        assert!(!table::contains(&droptree.nullifiers,sender_addr),ERR_ALREADY_NULLIFIED);
-        assert!(amount > 0,ERR_AMOUNT_ZERO);
-        assert!(root >0, ERR_INVALID_ROOT);
-        assert!(droptree.deposit_left - amount >= 0,ERR_INVALID_AMOUNT);
-        assert!(droptree.unused_leaves !=0,ERR_NO_MORE_LEAVES);
+        assert!(!table::contains(&droptree.nullifiers, sender_addr), ERR_ALREADY_NULLIFIED);
+        assert!(amount > 0, ERR_AMOUNT_ZERO);
+        assert!(root > 0, ERR_INVALID_ROOT);
+        assert!(
+            droptree.deposit_left - amount >= 0,
+            ERR_INVALID_AMOUNT
+        );
+        assert!(droptree.unused_leaves != 0, ERR_NO_MORE_LEAVES);
+
         //convert proof input
-        let (a,b,c) = convert_proof_input(proof);
+        let (a, b, c) = convert_proof_input(proof);
 
         //TODO: verify proof
+        //TODO: I need to use the public inputs: sender_addr, root, amount
 
-        
+        //TODO: turn the sender_addr into a string
+
         //Fees calculations
-        let (finalAmount,fee) = calculate_fees(amount);
+        let (finalAmount, fee) = calculate_fees(amount);
 
         //Do the withdraw to the recipient
         fungible_asset::transfer(
             &generate_fungible_store_signer(),
             droptree.deposit_store,
             primary_fungible_store::ensure_primary_store_exists(
-                sender_addr,droptree.fa_metadata_object
+                sender_addr, droptree.fa_metadata_object
             ),
             finalAmount
         );
@@ -399,22 +499,19 @@ module paydrop_addr::paydrop {
             ),
             fee
         );
- 
-        // nullify the sender
-        table::add(&mut droptree.nullifiers,sender_addr,true);
 
-        //write everything back 
+        // nullify the sender
+        table::add(&mut droptree.nullifiers, sender_addr, true);
+
+        //write everything back
         droptree.deposit_left = droptree.deposit_left - amount;
 
-        droptree.unused_leaves = droptree.unused_leaves -1;        
+        droptree.unused_leaves = droptree.unused_leaves - 1;
 
         //emit an event
-        event::emit(DropClaimed{
-            sponsor,
-            merkle_root: root,
-            recipient: sender_addr,
-            amount
-        });
+        event::emit(
+            DropClaimed { sponsor, merkle_root: root, recipient: sender_addr, amount }
+        );
     }
 
     //Enable a drop tree, only allow enable if there is deposit
@@ -460,16 +557,15 @@ module paydrop_addr::paydrop {
         //Returns if the nullifiers contains the recipient address
         table::contains(&selected_tree.nullifiers, recipient)
     }
-    
+
     #[view]
-    public fun calculate_fees(amount: u64): (u64,u64) acquires Config{
+    public fun calculate_fees(amount: u64): (u64, u64) acquires Config {
         let config = borrow_global<Config>(@paydrop_addr);
         let onePercent = amount / 100;
         let fee = config.fee * onePercent;
         let finalAmount = amount - fee;
-        (finalAmount,fee)
+        (finalAmount, fee)
     }
-
 
     inline fun tree_selector(sponsor: address, root: u256): &DropTree {
         let forest = get_forest(sponsor);
@@ -487,7 +583,6 @@ module paydrop_addr::paydrop {
         borrow_global_mut<Forest>(sponsor)
     }
 
-    
     // Generate signer to send value from fungible stores
     fun generate_fungible_store_signer(): signer acquires FungibleStoreController {
         object::generate_signer_for_extending(
@@ -495,30 +590,31 @@ module paydrop_addr::paydrop {
         )
     }
 
-
-    
     //TODO: get the vkey for the verification
+    //TODO: I could also use a verification key init, that saves the parameters as numbers to storage, as u256
+    //Then I only need to worry about converting the inputs
+
+  
     // inline fun get_vkey():(Element<G1>){}
 
     //TODO:
     // inline fun convert_public_input(recipient: address, amount: u64, root: u256){}
 
-    inline fun convert_proof_input(proof: vector<u256>):(Element<G1>,Element<G2>,Element<G1>) {
-        let a_x = *vector::borrow(&proof,0);
-        let a_y = *vector::borrow(&proof,1);
-        let b_x1 = *vector::borrow(&proof,2);
-        let b_y1 = *vector::borrow(&proof,3);
-        let b_x2 = *vector::borrow(&proof,4);
-        let b_y2 = *vector::borrow(&proof,5);
-        let c_x = *vector::borrow(&proof,6);
-        let c_y = *vector::borrow(&proof,7);
+    inline fun convert_proof_input(proof: vector<u256>):
+        (Element<G1>, Element<G2>, Element<G1>) {
+        let a_x = *vector::borrow(&proof, 0);
+        let a_y = *vector::borrow(&proof, 1);
+        let b_x1 = *vector::borrow(&proof, 2);
+        let b_y1 = *vector::borrow(&proof, 3);
+        let b_x2 = *vector::borrow(&proof, 4);
+        let b_y2 = *vector::borrow(&proof, 5);
+        let c_x = *vector::borrow(&proof, 6);
+        let c_y = *vector::borrow(&proof, 7);
 
         let a_bytes = bcs::to_bytes<u256>(&a_x);
         let a_y_bytes = bcs::to_bytes<u256>(&a_y);
         vector::append(&mut a_bytes, a_y_bytes);
-        let a = std::option::extract(
-            &mut deserialize<G1, FormatG1Uncompr>(&a_bytes)
-        );
+        let a = std::option::extract(&mut deserialize<G1, FormatG1Uncompr>(&a_bytes));
 
         let b_bytes = bcs::to_bytes<u256>(&b_x1);
         let b_y1_bytes = bcs::to_bytes<u256>(&b_y1);
@@ -527,16 +623,12 @@ module paydrop_addr::paydrop {
         vector::append(&mut b_bytes, b_y1_bytes);
         vector::append(&mut b_bytes, b_x2_bytes);
         vector::append(&mut b_bytes, b_y2_bytes);
-        let b = std::option::extract(
-            &mut deserialize<G2, FormatG2Uncompr>(&b_bytes)
-        );
+        let b = std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&b_bytes));
 
         let c_bytes = bcs::to_bytes<u256>(&c_x);
         let c_y_bytes = bcs::to_bytes<u256>(&c_y);
         vector::append(&mut c_bytes, c_y_bytes);
-        let c = std::option::extract(
-            &mut deserialize<G1, FormatG1Uncompr>(&c_bytes)
-        );
+        let c = std::option::extract(&mut deserialize<G1, FormatG1Uncompr>(&c_bytes));
 
         (a, b, c)
     }
@@ -575,79 +667,92 @@ module paydrop_addr::paydrop {
         eq(&left, &right)
     }
 
+    // #[test_only]
+    // use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
+    // #[test_only]
+    // use aptos_std::bn254_algebra::{
+    //     Fr,
+    //     FormatFrLsb,
+    //     FormatG1Compr,
+    //     FormatG2Compr,
+    //     G1,
+    //     G2,
+    //     Gt
+    // };
+    // #[test_only]
+    // use std::vector;
+
+    // #[test(fx = @std)]
+    // fun test_verify_proof_with_bn254(fx: signer) {
+    //     enable_cryptography_algebra_natives(&fx);
+
+    //     let vk_alpha_g1 =
+    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
+    //     let vk_beta_g2 =
+    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
+    //     let vk_gamma_g2 =
+    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
+    //     let vk_delta_g2 =
+    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
+    //     let vk_gamma_abc_g1_bytes = __VK_GAMMA_ABC_G1__;
+    //     let public_inputs_bytes = __VK_PUBLIC_INPUTS__;
+    //     assert!(
+    //         vector::length(&public_inputs_bytes) + 1
+    //             == vector::length(&vk_gamma_abc_g1_bytes),
+    //         1
+    //     );
+
+    //     let vk_gamma_abc_g1 =
+    //         std::vector::map(
+    //             vk_gamma_abc_g1_bytes,
+    //             |item| {
+    //                 let bytes: vector<u8> = item;
+    //                 std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
+    //             }
+    //         );
+
+    //     let public_inputs =
+    //         std::vector::map(
+    //             public_inputs_bytes,
+    //             |item| {
+    //                 let bytes: vector<u8> = item;
+    //                 std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
+    //             }
+    //         );
+
+    //     let proof_a =
+    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
+    //     let proof_b =
+    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
+    //     let proof_c =
+    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
+
+    //     assert!(
+    //         verify_proof<G1, G2, Gt, Fr>(
+    //             &vk_alpha_g1,
+    //             &vk_beta_g2,
+    //             &vk_gamma_g2,
+    //             &vk_delta_g2,
+    //             &vk_gamma_abc_g1,
+    //             &public_inputs,
+    //             &proof_a,
+    //             &proof_b,
+    //             &proof_c
+    //         ),
+    //         1
+    //     );
+    // }
+
     #[test_only]
-    use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
-    #[test_only]
-    use aptos_std::bn254_algebra::{
-        Fr,
-        FormatFrLsb,
-        FormatG1Compr,
-        FormatG2Compr,
-        G1,
-        G2,
-        Gt
-    };
-    #[test_only]
-    use std::vector;
-
-    #[test(fx = @std)]
-    fun test_verify_proof_with_bn254(fx: signer) {
-        enable_cryptography_algebra_natives(&fx);
-
-        let vk_alpha_g1 =
-            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
-        let vk_beta_g2 =
-            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
-        let vk_gamma_g2 =
-            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
-        let vk_delta_g2 =
-            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
-        let vk_gamma_abc_g1_bytes = __VK_GAMMA_ABC_G1__;
-        let public_inputs_bytes = __VK_PUBLIC_INPUTS__;
-        assert!(
-            vector::length(&public_inputs_bytes) + 1
-                == vector::length(&vk_gamma_abc_g1_bytes),
-            1
-        );
-
-        let vk_gamma_abc_g1 =
-            std::vector::map(
-                vk_gamma_abc_g1_bytes,
-                |item| {
-                    let bytes: vector<u8> = item;
-                    std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
-                }
-            );
-
-        let public_inputs =
-            std::vector::map(
-                public_inputs_bytes,
-                |item| {
-                    let bytes: vector<u8> = item;
-                    std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
-                }
-            );
-
-        let proof_a =
-            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
-        let proof_b =
-            std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
-        let proof_c =
-            std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
-
-        assert!(
-            verify_proof<G1, G2, Gt, Fr>(
-                &vk_alpha_g1,
-                &vk_beta_g2,
-                &vk_gamma_g2,
-                &vk_delta_g2,
-                &vk_gamma_abc_g1,
-                &public_inputs,
-                &proof_a,
-                &proof_b,
-                &proof_c
-            ),
-            1
-        );
+    use std::debug;
+    //This test is to manipulate the sender's address into a format that is accepted by the verifier
+    #[test(fx = @0x519ea4e01dab0d5217cf6d1c95ed0cad20b6d12277b4231f268c1aa9f90998b8)]
+    fun test_address_conversions(fx: signer) {
+        let sender_addr = signer::address_of(&fx);
+        let string_addr = string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
+        let withoutAtsign = string::sub_string(&string_addr,1,string::length(&string_addr));
+        debug::print(&sender_addr);
+        debug::print(&string_addr);
+        debug::print(&withoutAtsign);
     }
 }
