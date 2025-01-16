@@ -25,8 +25,8 @@
                 }
             })
 
-        console.log(JSON.stringify(proof))
-        console.log(JSON.stringify(publicSignals))
+        // console.log(JSON.stringify(proof))
+        // console.log(JSON.stringify(publicSignals))
             const verificationKeyFile = fs.readFileSync("circuits/compiled/verification_key.json", "utf-8");
             const verificationKey = JSON.parse(verificationKeyFile);
             const result = await verifyProof({verificationKey, proof, publicSignals})

@@ -1,19 +1,19 @@
 
-import { buildHashImplementation } from "../lib/index.js";
+import { buildHashImplementation, generateAptosAccount } from "../lib/index.js";
 import assert from "assert";
 import { encodeForCircuit, generateMerkleProof, generateMerkleTree, getMerkleRootFromMerkleProof, populateTree } from "../lib/merkletree.js";
 /**
  * This is a test input, generated for the starting circuit.
  * If you update the inputs, you need to update this function to match it.
  */
+
 export async function getInput(){
     await buildHashImplementation();
     
-        const size = 9;
-        
-        
-        const { addresses, amounts, commitments, } = await populateTree(size)
-
+        const size = 10;
+                
+        const { addresses, amounts, commitments, } = await populateTree(size);
+        console.log(addresses);
         const merkleTree = await generateMerkleTree(structuredClone(commitments));
 
         const merkleProof = await generateMerkleProof(commitments[0], structuredClone(commitments),null);
@@ -22,7 +22,6 @@ export async function getInput(){
         assert.equal(merkleTree.root, merkleRoot)
 
         const encodedProof = encodeForCircuit(merkleProof);
-
         return {
             address: addresses[0],
             amount : amounts[0],

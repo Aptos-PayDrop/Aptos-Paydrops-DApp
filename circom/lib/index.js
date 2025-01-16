@@ -4,7 +4,14 @@ import crypto from "crypto";
 import assert from "assert";
 import { buildPoseidon } from "circomlibjs";
 import { groth16 } from "snarkjs";
-    
+import { Account } from "@aptos-labs/ts-sdk";
+
+
+export function generateAptosAccount(){
+    const account = Account.generate();    
+    return account.accountAddress.toString();
+}
+
 
 /**
  * @returns {bigint} Returns a random bigint

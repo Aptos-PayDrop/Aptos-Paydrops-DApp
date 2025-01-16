@@ -1,5 +1,5 @@
 
-    import { hashLeaves,  rbigint , generateCommitmentHash} from "./index.js";
+    import { hashLeaves,  rbigint , generateCommitmentHash, generateAptosAccount} from "./index.js";
     
 /**
  * The TREELEVELS constant specifies the size of the tree and it's levels and merkle proof size.
@@ -223,8 +223,9 @@ export async function populateTree(size) {
 
     //Initialize the tree and create the bottom leaves
     for (let i = 0; i < size; i++) {
-        let address = rbigint();
-        let amount = rbigint();
+        console.log(i)
+        let address = generateAptosAccount();
+        let amount = 10;
         addresses.push(address);
         amounts.push(amount);
 
