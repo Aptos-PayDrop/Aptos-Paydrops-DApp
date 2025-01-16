@@ -8,10 +8,10 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 //The merkle tree contains leaves with hash(address,amount)
 //Only the merkle proof is private but it's not a privacy, it's a scaling solution
 
-template CommitmentRevealScheme(levels){
+template AddressAmountMerkleTreeChecker(levels){
     // Public inputs
-    signal input commitmentHash;
-    signal input address;
+
+    signal input address; //It's actually a ripemd160 hash
     signal input amount;
 
     signal input root;
@@ -23,8 +23,6 @@ template CommitmentRevealScheme(levels){
 
     commitmentHasher.inputs[0] <== address;
     commitmentHasher.inputs[1] <== amount;
-
-    commitmentHasher.out === commitmentHash;
 
         
     // Check if the merkle root contains the commitmentHash!
@@ -41,4 +39,4 @@ template CommitmentRevealScheme(levels){
 
 }
 
-component main {public [commitmentHash,root,address,amount]} = CommitmentRevealScheme(20);
+component main {public [address,amount,root]} = AddressAmountMerkleTreeChecker(20);

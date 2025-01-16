@@ -1,6 +1,6 @@
 
-    import { hashLeaves,  rbigint , generateCommitmentHash, generateAptosAccount} from "./index.js";
-    
+import { hashLeaves, rbigint, generateCommitmentHash, generateAptosAccount, hashTwice } from "./index.js";
+
 /**
  * The TREELEVELS constant specifies the size of the tree and it's levels and merkle proof size.
  * This variable is required to be a constant by the circom circuit
@@ -218,23 +218,26 @@ export function serializeMerkleTree(tree) {
  */
 export async function populateTree(size) {
     const addresses = [];
+    const bcsBytesArray = [];
     const amounts = [];
     const commitments = []; //commitments are the bottom leaves of the tree.
 
     //Initialize the tree and create the bottom leaves
     for (let i = 0; i < size; i++) {
-        console.log(i)
-        let address = generateAptosAccount();
+        let [address, bcsbytes] = generateAptosAccount();
         let amount = 10;
         addresses.push(address);
         amounts.push(amount);
+        bcsBytesArray.push(bcsbytes);
 
-        const commitment = await generateCommitmentHash(address, amount)
+        const address_ripemd160 = hashTwice(bcsbytes);
+
+        const commitment = await generateCommitmentHash(address_ripemd160, amount)
         commitments.push(commitment);
     }
 
     return {
-        addresses, amounts, commitments,
+        addresses, amounts, commitments, bcsBytesArray
     }
 }
 
