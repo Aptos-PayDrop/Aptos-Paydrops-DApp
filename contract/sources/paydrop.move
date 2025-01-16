@@ -34,11 +34,16 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
+    use std::any;
+    use aptos_std::from_bcs;
+
     use std::vector;
     use std::option::{Self, Option};
-    use std::string;
+    use std::string::{Self, String};
     use std::string_utils;
-   
+    use std::hash;
+    use std::aptos_hash;
+
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::object::{Self, Object, ExtendRef};
@@ -138,7 +143,8 @@ module paydrop_addr::paydrop {
         //The verification elements are set by the contract_creator using an init function
     }
 
-    struct VerificationKey has key{
+    //Global per contract, contains the verification key parameters
+    struct VerificationKey has key {
         vk_alpha_x: u256,
         vk_alpha_y: u256,
         vk_beta_x1: u256,
@@ -162,7 +168,7 @@ module paydrop_addr::paydrop {
         vk_gamma_abc_4_x: u256,
         vk_gamma_abc_4_y: u256,
         vk_gamma_abc_5_x: u256,
-        vk_gamma_abc_5_y: u256,
+        vk_gamma_abc_5_y: u256
     }
 
     #[event]
@@ -234,69 +240,73 @@ module paydrop_addr::paydrop {
             }
         );
     }
-    
+
+    //Saves the vkey to storage to use with the verification.
     //It's a vector with size 24, that contains the vkey parametes
     //All the naming comes from the verification_key except the Ic has been renamed to vk_gamma_abc
-    //The naming convention is copied from the example groth-16 verifier code
-    public entry fun initialize_vkey(sender :&signer,vkey: vector<u256>){
+    //The naming convention is copied from the example for groth-16 verifier
+    public entry fun initialize_vkey(sender: &signer, vkey: vector<u256>) {
         let sender_addr = signer::address_of(sender);
         assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
-        let vk_alpha_x = *vector::borrow(&vkey,0);
-        let vk_alpha_y = *vector::borrow(&vkey,1);
+        let vk_alpha_x = *vector::borrow(&vkey, 0);
+        let vk_alpha_y = *vector::borrow(&vkey, 1);
 
-        let vk_beta_x1 = *vector::borrow(&vkey,2);
-        let vk_beta_y1 = *vector::borrow(&vkey,3);
-        let vk_beta_x2 = *vector::borrow(&vkey,4);
-        let vk_beta_y2 = *vector::borrow(&vkey,5);
+        let vk_beta_x1 = *vector::borrow(&vkey, 2);
+        let vk_beta_y1 = *vector::borrow(&vkey, 3);
+        let vk_beta_x2 = *vector::borrow(&vkey, 4);
+        let vk_beta_y2 = *vector::borrow(&vkey, 5);
 
-        let vk_gamma_x1 = *vector::borrow(&vkey,6);
-        let vk_gamma_y1 = *vector::borrow(&vkey,7);
-        let vk_gamma_x2 = *vector::borrow(&vkey,8);
-        let vk_gamma_y2 = *vector::borrow(&vkey,9);
+        let vk_gamma_x1 = *vector::borrow(&vkey, 6);
+        let vk_gamma_y1 = *vector::borrow(&vkey, 7);
+        let vk_gamma_x2 = *vector::borrow(&vkey, 8);
+        let vk_gamma_y2 = *vector::borrow(&vkey, 9);
 
-        let vk_delta_x1 = *vector::borrow(&vkey,10);
-        let vk_delta_y1 = *vector::borrow(&vkey,11);
-        let vk_delta_x2 = *vector::borrow(&vkey,12);
-        let vk_delta_y2 = *vector::borrow(&vkey,13);
+        let vk_delta_x1 = *vector::borrow(&vkey, 10);
+        let vk_delta_y1 = *vector::borrow(&vkey, 11);
+        let vk_delta_x2 = *vector::borrow(&vkey, 12);
+        let vk_delta_y2 = *vector::borrow(&vkey, 13);
 
-        let vk_gamma_abc_1_x = *vector::borrow(&vkey,14);
-        let vk_gamma_abc_1_y = *vector::borrow(&vkey,15);
-        let vk_gamma_abc_2_x = *vector::borrow(&vkey,16);
-        let vk_gamma_abc_2_y = *vector::borrow(&vkey,17);
-        let vk_gamma_abc_3_x = *vector::borrow(&vkey,18);
-        let vk_gamma_abc_3_y = *vector::borrow(&vkey,19);
-        let vk_gamma_abc_4_x = *vector::borrow(&vkey,20);
-        let vk_gamma_abc_4_y = *vector::borrow(&vkey,21);
-        let vk_gamma_abc_5_x = *vector::borrow(&vkey,22);
-        let vk_gamma_abc_5_y = *vector::borrow(&vkey,23);
-        
-        move_to(sender,VerificationKey{
-            vk_alpha_x,
-            vk_alpha_y,
-            vk_beta_x1,
-            vk_beta_y1,
-            vk_beta_x2,
-            vk_beta_y2,
-            vk_gamma_x1,
-            vk_gamma_y1,
-            vk_gamma_x2,
-            vk_gamma_y2,
-            vk_delta_x1,
-            vk_delta_y1,
-            vk_delta_x2,
-            vk_delta_y2,
-            vk_gamma_abc_1_x,
-            vk_gamma_abc_1_y,
-            vk_gamma_abc_2_x,
-            vk_gamma_abc_2_y,
-            vk_gamma_abc_3_x,
-            vk_gamma_abc_3_y,
-            vk_gamma_abc_4_x,
-            vk_gamma_abc_4_y,
-            vk_gamma_abc_5_x,
-            vk_gamma_abc_5_y
-        });
-     }
+        let vk_gamma_abc_1_x = *vector::borrow(&vkey, 14);
+        let vk_gamma_abc_1_y = *vector::borrow(&vkey, 15);
+        let vk_gamma_abc_2_x = *vector::borrow(&vkey, 16);
+        let vk_gamma_abc_2_y = *vector::borrow(&vkey, 17);
+        let vk_gamma_abc_3_x = *vector::borrow(&vkey, 18);
+        let vk_gamma_abc_3_y = *vector::borrow(&vkey, 19);
+        let vk_gamma_abc_4_x = *vector::borrow(&vkey, 20);
+        let vk_gamma_abc_4_y = *vector::borrow(&vkey, 21);
+        let vk_gamma_abc_5_x = *vector::borrow(&vkey, 22);
+        let vk_gamma_abc_5_y = *vector::borrow(&vkey, 23);
+
+        move_to(
+            sender,
+            VerificationKey {
+                vk_alpha_x,
+                vk_alpha_y,
+                vk_beta_x1,
+                vk_beta_y1,
+                vk_beta_x2,
+                vk_beta_y2,
+                vk_gamma_x1,
+                vk_gamma_y1,
+                vk_gamma_x2,
+                vk_gamma_y2,
+                vk_delta_x1,
+                vk_delta_y1,
+                vk_delta_x2,
+                vk_delta_y2,
+                vk_gamma_abc_1_x,
+                vk_gamma_abc_1_y,
+                vk_gamma_abc_2_x,
+                vk_gamma_abc_2_y,
+                vk_gamma_abc_3_x,
+                vk_gamma_abc_3_y,
+                vk_gamma_abc_4_x,
+                vk_gamma_abc_4_y,
+                vk_gamma_abc_5_x,
+                vk_gamma_abc_5_y
+            }
+        );
+    }
 
     //The creator of the contact can set the fee_manager_address
     public entry fun set_fee_manager(
@@ -460,9 +470,12 @@ module paydrop_addr::paydrop {
 
         //Check if the sender is nullified or not
 
-        assert!(!table::contains(&droptree.nullifiers, sender_addr), ERR_ALREADY_NULLIFIED);
+        assert!(
+            !table::contains(&droptree.nullifiers, sender_addr), ERR_ALREADY_NULLIFIED
+        );
         assert!(amount > 0, ERR_AMOUNT_ZERO);
         assert!(root > 0, ERR_INVALID_ROOT);
+        //TODO: this is redundant because there are no negative numbers implemented
         assert!(
             droptree.deposit_left - amount >= 0,
             ERR_INVALID_AMOUNT
@@ -590,15 +603,117 @@ module paydrop_addr::paydrop {
         )
     }
 
-    //TODO: get the vkey for the verification
-    //TODO: I could also use a verification key init, that saves the parameters as numbers to storage, as u256
-    //Then I only need to worry about converting the inputs
 
-  
-    // inline fun get_vkey():(Element<G1>){}
+    /// hashTwice in javascript:
+    /// const account = Account.generate();
+    /// const address = account.accountAddress;
+    /// const address_bytes = address.bcsToBytes();
+    /// const hash = crypto.createHash("sha256")
+    /// .update(address_bytes).digest();
+    /// const ripemd = crypto.createHash("ripemd160").update(hash).digest("hex");
+    /// return "0x" + ripemd;
+    inline fun hashTwice(sender_addr: address): vector<u8> {
+        let bytes = bcs::to_bytes<address>(&sender_addr);
+        let sha2_256: vector<u8> = hash::sha2_256(bytes);
+        let ripemd160: vector<u8> = aptos_hash::ripemd160(sha2_256);
+        ripemd160
+    }
 
-    //TODO:
-    // inline fun convert_public_input(recipient: address, amount: u64, root: u256){}
+    //Gets the vkey from storage and prepares it to be used for verification
+    inline fun prepare_vkey():
+        (
+        Element<G1>, Element<G2>, Element<G2>, Element<G2>, vector<Element<G1>>
+    ) acquires VerificationKey {
+        let raw_vkey = borrow_global<VerificationKey>(@paydrop_addr);
+
+        //Deserialize into bytes
+
+        let vk_alpha_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_alpha_x);
+        let vk_alpha_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_alpha_y);
+        vector::append(&mut vk_alpha_bytes, vk_alpha_y_bytes);
+        let vk_alpha =
+            std::option::extract(&mut deserialize<G1, FormatG1Uncompr>(&vk_alpha_bytes));
+
+        let vk_beta_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_beta_x1);
+        let vk_beta_y1_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_beta_y1);
+        let vk_beta_x2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_beta_x2);
+        let vk_beta_y2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_beta_y2);
+        vector::append(&mut vk_beta_bytes, vk_beta_y1_bytes);
+        vector::append(&mut vk_beta_bytes, vk_beta_x2_bytes);
+        vector::append(&mut vk_beta_bytes, vk_beta_y2_bytes);
+        let vk_beta =
+            std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_beta_bytes));
+
+        let vk_gamma_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_x1);
+        let vk_gamma_y1_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_y1);
+        let vk_gamma_x2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_x2);
+        let vk_gamma_y2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_y2);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
+        vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
+        let vk_gamma =
+            std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_gamma_bytes));
+
+        let vk_delta_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_delta_x1);
+        let vk_delta_y1_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_delta_y1);
+        let vk_delta_x2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_delta_x2);
+        let vk_delta_y2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_delta_y2);
+        vector::append(&mut vk_delta_bytes, vk_delta_y1_bytes);
+        vector::append(&mut vk_delta_bytes, vk_delta_x2_bytes);
+        vector::append(&mut vk_delta_bytes, vk_delta_y2_bytes);
+        let vk_delta =
+            std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_delta_bytes));
+
+        let vk_gamma_abc_1_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_1_x);
+        let vk_gamma_abc_1_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_1_y);
+        vector::append(&mut vk_gamma_abc_1_bytes, vk_gamma_abc_1_y_bytes);
+        let vk_gamma_abc_1 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_1_bytes)
+            );
+
+        let vk_gamma_abc_2_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_2_x);
+        let vk_gamma_abc_2_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_2_y);
+        vector::append(&mut vk_gamma_abc_2_bytes, vk_gamma_abc_2_y_bytes);
+        let vk_gamma_abc_2 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_2_bytes)
+            );
+
+        let vk_gamma_abc_3_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_3_x);
+        let vk_gamma_abc_3_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_3_y);
+        vector::append(&mut vk_gamma_abc_3_bytes, vk_gamma_abc_3_y_bytes);
+        let vk_gamma_abc_3 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_3_bytes)
+            );
+
+        let vk_gamma_abc_4_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_4_x);
+        let vk_gamma_abc_4_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_4_y);
+        vector::append(&mut vk_gamma_abc_4_bytes, vk_gamma_abc_4_y_bytes);
+        let vk_gamma_abc_4 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_4_bytes)
+            );
+
+        let vk_gamma_abc_5_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_x);
+        let vk_gamma_abc_5_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_y);
+        vector::append(&mut vk_gamma_abc_5_bytes, vk_gamma_abc_5_y_bytes);
+        let vk_gamma_abc_5 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_5_bytes)
+            );
+
+        let vk_gamma_abc: vector<Element<G1>> = vector[
+            vk_gamma_abc_1,
+            vk_gamma_abc_2,
+            vk_gamma_abc_3,
+            vk_gamma_abc_4,
+            vk_gamma_abc_5
+        ];
+
+        (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc)
+    }
 
     inline fun convert_proof_input(proof: vector<u256>):
         (Element<G1>, Element<G2>, Element<G1>) {
@@ -669,18 +784,6 @@ module paydrop_addr::paydrop {
 
     // #[test_only]
     // use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
-    // #[test_only]
-    // use aptos_std::bn254_algebra::{
-    //     Fr,
-    //     FormatFrLsb,
-    //     FormatG1Compr,
-    //     FormatG2Compr,
-    //     G1,
-    //     G2,
-    //     Gt
-    // };
-    // #[test_only]
-    // use std::vector;
 
     // #[test(fx = @std)]
     // fun test_verify_proof_with_bn254(fx: signer) {
@@ -745,14 +848,108 @@ module paydrop_addr::paydrop {
 
     #[test_only]
     use std::debug;
-    //This test is to manipulate the sender's address into a format that is accepted by the verifier
-    #[test(fx = @0x519ea4e01dab0d5217cf6d1c95ed0cad20b6d12277b4231f268c1aa9f90998b8)]
-    fun test_address_conversions(fx: signer) {
+    // //This test is to manipulate the sender's address into a format that is accepted by the verifier
+    #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
+    fun test_address_conversions_to_string(fx: signer) {
         let sender_addr = signer::address_of(&fx);
-        let string_addr = string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
-        let withoutAtsign = string::sub_string(&string_addr,1,string::length(&string_addr));
+        let string_addr =
+            string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
+        let withoutAtsign =
+            string::sub_string(&string_addr, 1, string::length(&string_addr));
         debug::print(&sender_addr);
         debug::print(&string_addr);
         debug::print(&withoutAtsign);
+    }
+
+    // #[test(fx=@0xe282cef07602b6a8e641b3960ca0eacc43cb9accf03b12551389d4644af8418d)]
+    // fun test_address_concat_comparisons(fx: signer){
+    //     let sender_addr = signer::address_of(&fx);
+    //     let sender_string_addr = string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
+
+    //     let front = x"0xe282cef07602b6a8e641b3960ca0eac";
+    //     let back = x"c43cb9accf03b12551389d4644af8418d";
+    // }
+
+    // #[test(fx = @0xe282cef07602b6a8e641b3960ca0eacc43cb9accf03b12551389d4644af8418d)]
+    // fun test_address_splitting_BCS(fx: signer){
+
+    //     let front:u256  = 18817795179166273883276268107264036524;
+    //     let back:u256 = 4173503854759105425873270117354427662733;
+
+    //     //Try to pack into any and then unpack into address
+
+    //     let anyFront = any::pack<u256>(front);
+
+    //     let frontAddr = any::unpack<address>(anyFront);
+
+    //     // TODO: turn the front and back into an address
+    //     //Then turn the address into a string
+    //     //Then remove the 0x and compare
+
+    //     debug::print(&front);
+    //     debug::print(&back);
+    //     // debug::print(&anyFront);
+    // }
+
+    //TODO: A TEST FOR:
+    //THIS ADDRESS 0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37
+    //CONVERTED TO UINT256 smaller than snark scalar field 16242660654177903955444722880893916385808929164366343085129637516870938360629
+
+    //  #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
+    // fun test_address_splitting_BCS(fx: signer){
+    //     let sender_addr = signer::address_of(&fx);
+
+    //     let bytes = bcs::to_bytes<address>(&sender_addr);
+    //     debug::print(&bytes);
+    //     let u256Address = from_bcs::to_u256(bytes);
+    //     debug::print(&u256Address);
+    //     let convertedBack = bcs::to_bytes<u256>(&u256Address);
+    //     debug::print(&convertedBack);
+    // }
+
+    //THIS HASHING EQUALS THE SAME JS AND MOVE
+    // const b = new Buffer.from([10, 10]);
+    // const hash = crypto.createHash("sha256")
+    //     .update(b)
+    //     .digest("hex");
+    // console.log(BigInt("0x"+hash))
+    #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
+    fun test_sha256(fx: signer) {
+        let bytes = vector::empty<u8>();
+        vector::push_back<u8>(&mut bytes, 10);
+        vector::push_back<u8>(&mut bytes, 10);
+        let sha2_256: vector<u8> = hash::sha2_256(bytes);
+        debug::print(&sha2_256);
+    }
+
+    //This address should sha256 to that and the sha256 should ripemd160 to that
+    // address 0x061adee9bbb25279b4cdf7bb8da3e9c1f130bdaae3b5df15e5f68e5a598c140c
+    // sha256 0x6722e68b8e36b4d01cbea7fc0e783b4f544e6ecd3b31fa99e27a9e87a9824c9e
+    // ripemd from 0x713b39090a5c889a400ca473f2d27f4a7cd251b3
+    // THE JAVASCRIPT THAT WAS USED TO create this:
+    // const account = Account.generate();
+    // const address = account.accountAddress;
+    // const address_bytes = address.bcsToBytes();
+
+    // const hash = crypto.createHash("sha256")
+    //     .update(address_bytes).digest();
+
+    // const ripemd = crypto.createHash("ripemd160").update(hash).digest("hex");
+    // console.log("ripemd from", "0x" + ripemd);
+
+    #[test(fx = @0x0937da3b53461239e5b0f6a78fbd694aa9749893179decb7e383994a7041e4c0)]
+    fun test_sha256_address(fx: signer) {
+        let sender_addr = signer::address_of(&fx);
+        // let bytes = bcs::to_bytes<address>(&sender_addr);
+        // let sha2_256: vector<u8> = hash::sha2_256(bytes);
+        // debug::print(&sha2_256);
+
+        // let ripemd160: vector<u8> = aptos_hash::ripemd160(sha2_256);
+        // debug::print(&ripemd160);
+        let ripemd160 = hashTwice(sender_addr);
+        debug::print(&ripemd160);
+        // let expectedHash = x"3ba89024e1c7107c0f2b855e00c8abe0ca4ea386";
+
+        // assert!(ripemd160, expectedHash);
     }
 }
