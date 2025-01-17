@@ -63,24 +63,24 @@ module paydrop_addr::paydrop {
     };
 
     /// Sponsor account has not been set up to create Forest
-    const ESPONSOR_ACCOUNT_NOT_INITIALIZED: u64 = 1;
-    const EDROPTREE_NOT_FOUND: u64 = 2;
-    const ENOT_ENOUGH_BALANCE: u64 = 3;
-    const ERR_AMOUNT_ZERO: u64 = 4;
-    const ERR_INVALID_LEAVES: u64 = 5;
-    const ERR_INVALID_ROOT: u64 = 6;
-    const ERR_DROPTREE_EMPTY: u64 = 7;
-    const ERR_TOO_MANY_LEAVES: u64 = 8;
-    const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9;
-    const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10;
-    const ERR_INVALID_SPONSOR: u64 = 11;
-    const ERR_DROPTREE_DISABLED: u64 = 12;
-    const ERR_ALREADY_NULLIFIED: u64 = 13;
-    const ERR_INVALID_AMOUNT: u64 = 14;
-    const ERR_NO_MORE_LEAVES: u64 = 15;
-    const ONLY_CREATOR: u64 = 16;
-    const ERR_EXCEEDS_MAX_FEE: u64 = 17;
-    const ERR_INVALID_PROOF: u64 = 18;
+    const ESPONSOR_ACCOUNT_NOT_INITIALIZED: u64 = 1000;
+    const EDROPTREE_NOT_FOUND: u64 = 2000;
+    const ENOT_ENOUGH_BALANCE: u64 = 3000;
+    const ERR_AMOUNT_ZERO: u64 = 4000;
+    const ERR_INVALID_LEAVES: u64 = 5000;
+    const ERR_INVALID_ROOT: u64 = 6000;
+    const ERR_DROPTREE_EMPTY: u64 = 7000;
+    const ERR_TOO_MANY_LEAVES: u64 = 8000;
+    const ERR_DROPTREEE_ALREADY_ENABLED: u64 = 9000;
+    const ERR_NO_DEPOSIT_TO_ENABLE: u64 = 10000;
+    const ERR_INVALID_SPONSOR: u64 = 11000;
+    const ERR_DROPTREE_DISABLED: u64 = 12000;
+    const ERR_ALREADY_NULLIFIED: u64 = 13000;
+    const ERR_INVALID_AMOUNT: u64 = 14000;
+    const ERR_NO_MORE_LEAVES: u64 = 15000;
+    const ONLY_CREATOR: u64 = 16000;
+    const ERR_EXCEEDS_MAX_FEE: u64 = 17000;
+    const ERR_INVALID_PROOF: u64 = 18000;
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -353,7 +353,6 @@ module paydrop_addr::paydrop {
         let sender_addr = signer::address_of(sender);
 
         // Now create the fa_metadata_object that will be used for the droptree
-        // let fa_metadata = object::address_to_object<Metadata>(fa_address);
 
         let store_signer = &generate_fungible_store_signer();
         let signer_addr = signer::address_of(store_signer);
@@ -569,13 +568,17 @@ module paydrop_addr::paydrop {
 
     #[view]
     //Returns the sponsors drop tree using the root hash
-    public fun droptree_details(sponsor: address, root: u256): (u64, u64, u64, u64) acquires Forest {
+    public fun droptree_details(
+        sponsor: address, root: u256
+    ): (u64, u64, u64, u64, Object<Metadata>, bool) acquires Forest {
         let selected_tree = tree_selector(sponsor, root);
         (
             selected_tree.total_deposit,
             selected_tree.deposit_left,
             selected_tree.total_leaves,
-            selected_tree.unused_leaves
+            selected_tree.unused_leaves,
+            selected_tree.fa_metadata_object,
+            selected_tree.enabled
         )
     }
 
@@ -825,13 +828,15 @@ module paydrop_addr::paydrop {
         fa_metadata: Object<Metadata>,
         total_deposit: u64,
         total_leaves: u64,
-        enabled: bool) acquires Forest,FungibleStoreController{
-            new_droptree_internal(
-                sender,
-                root,
-                fa_metadata,
-                total_deposit,
-                total_leaves,
-                enabled);
+        enabled: bool
+    ) acquires Forest, FungibleStoreController {
+        new_droptree_internal(
+            sender,
+            root,
+            fa_metadata,
+            total_deposit,
+            total_leaves,
+            enabled
+        );
     }
 }
