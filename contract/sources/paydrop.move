@@ -23,10 +23,6 @@
 //The use-cases are AirDrops,QuadraticFunding,Mass Payouts,Salaries
 //The deposited payments have to be pulled.
 
-//I want to create a smart contract where a user can deposit a FungibleAsset with a Merkle Tree Root
-//And addresses that are in the merkle tree can withdraw a partial deposit using a zero knowledge proof with groth-16
-//The contract should allow refund to the depositor the deposits that were not withdrawn
-
 //named addresses
 //@fee_manager_address - The address that will receive the fees
 //@paydrop_addr - The address of the account deploying this contract
@@ -84,6 +80,7 @@ module paydrop_addr::paydrop {
     const ERR_NO_MORE_LEAVES: u64 = 15;
     const ONLY_CREATOR: u64 = 16;
     const ERR_EXCEEDS_MAX_FEE: u64 = 17;
+    const ERR_INVALID_PROOF: u64 = 18;
 
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
@@ -158,9 +155,7 @@ module paydrop_addr::paydrop {
         vk_gamma_abc_3_x: u256,
         vk_gamma_abc_3_y: u256,
         vk_gamma_abc_4_x: u256,
-        vk_gamma_abc_4_y: u256,
-        vk_gamma_abc_5_x: u256,
-        vk_gamma_abc_5_y: u256
+        vk_gamma_abc_4_y: u256
     }
 
     #[event]
@@ -208,7 +203,12 @@ module paydrop_addr::paydrop {
     /// If you deploy the module under an object, sender is the object's signer
     /// If you deploy the module under your own account, sender is your account's signer
     fun init_module(sender: &signer) {
+        init_module_internal(sender, @fee_manager_address)
+    }
 
+    fun init_module_internal(
+        sender: &signer, fee_manager_address: address
+    ) {
         //Create the config
         let sender_addr = signer::address_of(sender);
         //Move the initial configuration to global storage
@@ -217,7 +217,7 @@ module paydrop_addr::paydrop {
             Config {
                 contract_creator: sender_addr,
                 //Arguments injected using move.compile or publish
-                fee_manager_address: @fee_manager_address,
+                fee_manager_address,
                 fee: 0
             }
         );
@@ -266,8 +266,6 @@ module paydrop_addr::paydrop {
         let vk_gamma_abc_3_y = *vector::borrow(&vkey, 19);
         let vk_gamma_abc_4_x = *vector::borrow(&vkey, 20);
         let vk_gamma_abc_4_y = *vector::borrow(&vkey, 21);
-        let vk_gamma_abc_5_x = *vector::borrow(&vkey, 22);
-        let vk_gamma_abc_5_y = *vector::borrow(&vkey, 23);
 
         move_to(
             sender,
@@ -293,9 +291,7 @@ module paydrop_addr::paydrop {
                 vk_gamma_abc_3_x,
                 vk_gamma_abc_3_y,
                 vk_gamma_abc_4_x,
-                vk_gamma_abc_4_y,
-                vk_gamma_abc_5_x,
-                vk_gamma_abc_5_y
+                vk_gamma_abc_4_y
             }
         );
     }
@@ -396,6 +392,16 @@ module paydrop_addr::paydrop {
         );
     }
 
+    fun newDroptree_internal(
+       sender: &signer, 
+        root: u256, 
+        fa_address: Object<Metadata>, 
+        total_deposit: u64, 
+        total_leaves: u64, 
+        enabled: bool 
+
+    ){}
+
     //The signer that created the droptree can withdraw it
     public entry fun refund_droptree(
         sender: &signer, root: u256
@@ -444,7 +450,7 @@ module paydrop_addr::paydrop {
         root: u256,
         amount: u64,
         proof: vector<u256> // Contains 8 elements
-    ) acquires Forest, FungibleStoreController, Config,VerificationKey {
+    ) acquires Forest, FungibleStoreController, Config, VerificationKey {
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
         //Check if the forest for the sponsor exists
@@ -467,26 +473,29 @@ module paydrop_addr::paydrop {
         );
         assert!(amount > 0, ERR_AMOUNT_ZERO);
         assert!(root > 0, ERR_INVALID_ROOT);
-     
+
         assert!(droptree.unused_leaves != 0, ERR_NO_MORE_LEAVES);
 
         //convert proof input
         let (a, b, c) = convert_proof_input(proof);
-        let public_inputs = prepare_public_signals(sender_addr,amount,root);
-        let (vk_alpha,vk_beta,vk_gamma,vk_delta, vk_gamma_abc) = prepare_vkey();
+        let public_inputs = prepare_public_signals(sender_addr, amount, root);
+        let (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc) = prepare_vkey();
 
         // verify proof
-         assert!(verify_proof<G1, G2, Gt, Fr>(
-            &vk_alpha,
-            &vk_beta,
-            &vk_gamma,
-            &vk_delta,
-            &vk_gamma_abc,
-            &public_inputs,
-            &a,
-            &b,
-            &c
-            ),1);
+        assert!(
+            verify_proof<G1, G2, Gt, Fr>(
+                &vk_alpha,
+                &vk_beta,
+                &vk_gamma,
+                &vk_delta,
+                &vk_gamma_abc,
+                &public_inputs,
+                &a,
+                &b,
+                &c
+            ),
+            ERR_INVALID_PROOF
+        );
 
         //Fees calculations
         let (finalAmount, fee) = calculate_fees(amount);
@@ -501,12 +510,14 @@ module paydrop_addr::paydrop {
             finalAmount
         );
 
+        let config = borrow_global<Config>(@paydrop_addr);
+
         //Transfer the fee to the fee manager
         fungible_asset::transfer(
             &generate_fungible_store_signer(),
             droptree.deposit_store,
             primary_fungible_store::ensure_primary_store_exists(
-                @paydrop_addr, droptree.fa_metadata_object
+                config.fee_manager_address, droptree.fa_metadata_object
             ),
             fee
         );
@@ -578,6 +589,12 @@ module paydrop_addr::paydrop {
         (finalAmount, fee)
     }
 
+    #[view]
+    public fun get_fee(): (u64) acquires Config {
+        let config = borrow_global<Config>(@paydrop_addr);
+        config.fee
+    }
+
     inline fun tree_selector(sponsor: address, root: u256): &DropTree {
         let forest = get_forest(sponsor);
         assert!(table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
@@ -601,17 +618,22 @@ module paydrop_addr::paydrop {
         )
     }
 
-    inline fun prepare_public_signals(sender_addr: address,amount: u64,root:u256): vector<Element<Fr>>{
+    inline fun prepare_public_signals(
+        sender_addr: address, amount: u64, root: u256
+    ): vector<Element<Fr>> {
         let hashedAddress_bytes = hashAddressForSnark(sender_addr);
-        let public1_address =  std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&hashedAddress_bytes));
+        let public1_address =
+            std::option::extract(
+                &mut deserialize<Fr, FormatFrLsb>(&hashedAddress_bytes)
+            );
         let amount_bytes = bcs::to_bytes<u64>(&amount);
-        let public2_amount = std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&amount_bytes));
+        let public2_amount =
+            std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&amount_bytes));
         let root_bytes = bcs::to_bytes<u256>(&root);
-        let public3_root = std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&root_bytes));
+        let public3_root =
+            std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&root_bytes));
 
-        let public_inputs: vector<Element<Fr>> = vector[
-            public1_address, public2_amount, public3_root
-        ];
+        let public_inputs: vector<Element<Fr>> = vector[public1_address, public2_amount, public3_root];
 
         public_inputs
     }
@@ -702,21 +724,7 @@ module paydrop_addr::paydrop {
                 &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_4_bytes)
             );
 
-        let vk_gamma_abc_5_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_x);
-        let vk_gamma_abc_5_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_y);
-        vector::append(&mut vk_gamma_abc_5_bytes, vk_gamma_abc_5_y_bytes);
-        let vk_gamma_abc_5 =
-            std::option::extract(
-                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_5_bytes)
-            );
-
-        let vk_gamma_abc: vector<Element<G1>> = vector[
-            vk_gamma_abc_1,
-            vk_gamma_abc_2,
-            vk_gamma_abc_3,
-            vk_gamma_abc_4,
-            vk_gamma_abc_5
-        ];
+        let vk_gamma_abc: vector<Element<G1>> = vector[vk_gamma_abc_1, vk_gamma_abc_2, vk_gamma_abc_3, vk_gamma_abc_4];
 
         (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc)
     }
@@ -755,11 +763,6 @@ module paydrop_addr::paydrop {
     }
 
     /// SOURCE: https://github.com/aptos-labs/aptos-core/blobmain/aptos-move/move-examples/groth16_example/sources/groth16.move
-    /// Proof verification as specified in the original paper,
-    /// with the following input (in the original paper notations).
-    /// - Verification key: $\left([\alpha]_1, [\beta]_2, [\gamma]_2, [\delta]_2, \left\\{ \left[ \frac{\beta \cdot u_i(x) + \alpha \cdot v_i(x) + w_i(x)}{\gamma} \right]_1 \right\\}\_{i=0}^l \right)$.
-    /// - Public inputs: $\\{a_i\\}_{i=1}^l$.
-    /// - Proof $\left( \left[ A \right]_1, \left[ B \right]_2, \left[ C \right]_1 \right)$.
     public fun verify_proof<G1, G2, Gt, S>(
         vk_alpha_g1: &Element<G1>,
         vk_beta_g2: &Element<G2>,
@@ -788,78 +791,21 @@ module paydrop_addr::paydrop {
         eq(&left, &right)
     }
 
-    // #[test_only]
-    // use aptos_std::crypto_algebra::{deserialize, enable_cryptography_algebra_natives};
-
-    // #[test(fx = @std)]
-    // fun test_verify_proof_with_bn254(fx: signer) {
-    //     enable_cryptography_algebra_natives(&fx);
-
-    //     let vk_alpha_g1 =
-    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__VK_ALPHA_G1__));
-    //     let vk_beta_g2 =
-    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_BETA_G2__));
-    //     let vk_gamma_g2 =
-    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_GAMMA_G2__));
-    //     let vk_delta_g2 =
-    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__VK_DELTA_G2__));
-    //     let vk_gamma_abc_g1_bytes = __VK_GAMMA_ABC_G1__;
-    //     let public_inputs_bytes = __VK_PUBLIC_INPUTS__;
-    //     assert!(
-    //         vector::length(&public_inputs_bytes) + 1
-    //             == vector::length(&vk_gamma_abc_g1_bytes),
-    //         1
-    //     );
-
-    //     let vk_gamma_abc_g1 =
-    //         std::vector::map(
-    //             vk_gamma_abc_g1_bytes,
-    //             |item| {
-    //                 let bytes: vector<u8> = item;
-    //                 std::option::extract(&mut deserialize<G1, FormatG1Compr>(&bytes))
-    //             }
-    //         );
-
-    //     let public_inputs =
-    //         std::vector::map(
-    //             public_inputs_bytes,
-    //             |item| {
-    //                 let bytes: vector<u8> = item;
-    //                 std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&bytes))
-    //             }
-    //         );
-
-    //     let proof_a =
-    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_A__));
-    //     let proof_b =
-    //         std::option::extract(&mut deserialize<G2, FormatG2Compr>(&__PROOF_B__));
-    //     let proof_c =
-    //         std::option::extract(&mut deserialize<G1, FormatG1Compr>(&__PROOF_C__));
-
-    //     assert!(
-    //         verify_proof<G1, G2, Gt, Fr>(
-    //             &vk_alpha_g1,
-    //             &vk_beta_g2,
-    //             &vk_gamma_g2,
-    //             &vk_delta_g2,
-    //             &vk_gamma_abc_g1,
-    //             &public_inputs,
-    //             &proof_a,
-    //             &proof_b,
-    //             &proof_c
-    //         ),
-    //         1
-    //     );
-    // }
-
     #[test_only]
     use std::debug;
- 
+
     //Assert that a 31 byte hash is derived from the 32 byte sender_address
     #[test(fx = @0xd9f6c8ff9cd1d58a271fcc081a83c740295de07ef39ef6f5648804a750344614)]
     fun test_blake2b_address(fx: signer) {
         let sender_addr = signer::address_of(&fx);
         let strippedHash = hashAddressForSnark(sender_addr);
-        assert!(vector::length(&strippedHash) ==31);
+        assert!(vector::length(&strippedHash) == 31);
+    }
+
+    #[test_only]
+    public fun init_module_for_test(
+        sender: &signer, fee_manager_address: address
+    ) {
+        init_module_internal(sender, fee_manager_address);
     }
 }
