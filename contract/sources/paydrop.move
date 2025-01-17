@@ -34,14 +34,8 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
-    use std::any;
-    use aptos_std::from_bcs;
 
     use std::vector;
-    use std::option::{Self, Option};
-    use std::string::{Self, String};
-    use std::string_utils;
-    use std::hash;
     use std::aptos_hash;
 
     use aptos_framework::fungible_asset::{Self, Metadata, FungibleStore};
@@ -65,8 +59,6 @@ module paydrop_addr::paydrop {
     use aptos_std::bn254_algebra::{
         Fr,
         FormatFrLsb,
-        FormatG1Compr,
-        FormatG2Compr,
         G1,
         G2,
         Gt,
@@ -452,7 +444,7 @@ module paydrop_addr::paydrop {
         root: u256,
         amount: u64,
         proof: vector<u256> // Contains 8 elements
-    ) acquires Forest, FungibleStoreController, Config {
+    ) acquires Forest, FungibleStoreController, Config,VerificationKey {
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
         //Check if the forest for the sponsor exists
@@ -475,20 +467,26 @@ module paydrop_addr::paydrop {
         );
         assert!(amount > 0, ERR_AMOUNT_ZERO);
         assert!(root > 0, ERR_INVALID_ROOT);
-        //TODO: this is redundant because there are no negative numbers implemented
-        assert!(
-            droptree.deposit_left - amount >= 0,
-            ERR_INVALID_AMOUNT
-        );
+     
         assert!(droptree.unused_leaves != 0, ERR_NO_MORE_LEAVES);
 
         //convert proof input
         let (a, b, c) = convert_proof_input(proof);
+        let public_inputs = prepare_public_signals(sender_addr,amount,root);
+        let (vk_alpha,vk_beta,vk_gamma,vk_delta, vk_gamma_abc) = prepare_vkey();
 
-        //TODO: verify proof
-        //TODO: I need to use the public inputs: sender_addr, root, amount
-
-        //TODO: turn the sender_addr into a string
+        // verify proof
+         assert!(verify_proof<G1, G2, Gt, Fr>(
+            &vk_alpha,
+            &vk_beta,
+            &vk_gamma,
+            &vk_delta,
+            &vk_gamma_abc,
+            &public_inputs,
+            &a,
+            &b,
+            &c
+            ),1);
 
         //Fees calculations
         let (finalAmount, fee) = calculate_fees(amount);
@@ -603,20 +601,28 @@ module paydrop_addr::paydrop {
         )
     }
 
+    inline fun prepare_public_signals(sender_addr: address,amount: u64,root:u256): vector<Element<Fr>>{
+        let hashedAddress_bytes = hashAddressForSnark(sender_addr);
+        let public1_address =  std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&hashedAddress_bytes));
+        let amount_bytes = bcs::to_bytes<u64>(&amount);
+        let public2_amount = std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&amount_bytes));
+        let root_bytes = bcs::to_bytes<u256>(&root);
+        let public3_root = std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&root_bytes));
 
-    /// hashTwice in javascript:
-    /// const account = Account.generate();
-    /// const address = account.accountAddress;
-    /// const address_bytes = address.bcsToBytes();
-    /// const hash = crypto.createHash("sha256")
-    /// .update(address_bytes).digest();
-    /// const ripemd = crypto.createHash("ripemd160").update(hash).digest("hex");
-    /// return "0x" + ripemd;
-    inline fun hashTwice(sender_addr: address): vector<u8> {
+        let public_inputs: vector<Element<Fr>> = vector[
+            public1_address, public2_amount, public3_root
+        ];
+
+        public_inputs
+    }
+
+    //Hash address uses blake2b-256 and then strips the last byte to fit it into the zksnark
+    //Javascript implementation uses blake2b-wasm
+    inline fun hashAddressForSnark(sender_addr: address): vector<u8> {
         let bytes = bcs::to_bytes<address>(&sender_addr);
-        let sha2_256: vector<u8> = hash::sha2_256(bytes);
-        let ripemd160: vector<u8> = aptos_hash::ripemd160(sha2_256);
-        ripemd160
+        let blake2b_256: vector<u8> = aptos_hash::blake2b_256(bytes);
+        let byteSlice = vector::slice(&blake2b_256, 0, 31);
+        byteSlice
     }
 
     //Gets the vkey from storage and prepares it to be used for verification
@@ -848,108 +854,12 @@ module paydrop_addr::paydrop {
 
     #[test_only]
     use std::debug;
-    // //This test is to manipulate the sender's address into a format that is accepted by the verifier
-    #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
-    fun test_address_conversions_to_string(fx: signer) {
+ 
+    //Assert that a 31 byte hash is derived from the 32 byte sender_address
+    #[test(fx = @0xd9f6c8ff9cd1d58a271fcc081a83c740295de07ef39ef6f5648804a750344614)]
+    fun test_blake2b_address(fx: signer) {
         let sender_addr = signer::address_of(&fx);
-        let string_addr =
-            string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
-        let withoutAtsign =
-            string::sub_string(&string_addr, 1, string::length(&string_addr));
-        debug::print(&sender_addr);
-        debug::print(&string_addr);
-        debug::print(&withoutAtsign);
-    }
-
-    // #[test(fx=@0xe282cef07602b6a8e641b3960ca0eacc43cb9accf03b12551389d4644af8418d)]
-    // fun test_address_concat_comparisons(fx: signer){
-    //     let sender_addr = signer::address_of(&fx);
-    //     let sender_string_addr = string_utils::to_string_with_canonical_addresses<address>(&sender_addr);
-
-    //     let front = x"0xe282cef07602b6a8e641b3960ca0eac";
-    //     let back = x"c43cb9accf03b12551389d4644af8418d";
-    // }
-
-    // #[test(fx = @0xe282cef07602b6a8e641b3960ca0eacc43cb9accf03b12551389d4644af8418d)]
-    // fun test_address_splitting_BCS(fx: signer){
-
-    //     let front:u256  = 18817795179166273883276268107264036524;
-    //     let back:u256 = 4173503854759105425873270117354427662733;
-
-    //     //Try to pack into any and then unpack into address
-
-    //     let anyFront = any::pack<u256>(front);
-
-    //     let frontAddr = any::unpack<address>(anyFront);
-
-    //     // TODO: turn the front and back into an address
-    //     //Then turn the address into a string
-    //     //Then remove the 0x and compare
-
-    //     debug::print(&front);
-    //     debug::print(&back);
-    //     // debug::print(&anyFront);
-    // }
-
-    //TODO: A TEST FOR:
-    //THIS ADDRESS 0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37
-    //CONVERTED TO UINT256 smaller than snark scalar field 16242660654177903955444722880893916385808929164366343085129637516870938360629
-
-    //  #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
-    // fun test_address_splitting_BCS(fx: signer){
-    //     let sender_addr = signer::address_of(&fx);
-
-    //     let bytes = bcs::to_bytes<address>(&sender_addr);
-    //     debug::print(&bytes);
-    //     let u256Address = from_bcs::to_u256(bytes);
-    //     debug::print(&u256Address);
-    //     let convertedBack = bcs::to_bytes<u256>(&u256Address);
-    //     debug::print(&convertedBack);
-    // }
-
-    //THIS HASHING EQUALS THE SAME JS AND MOVE
-    // const b = new Buffer.from([10, 10]);
-    // const hash = crypto.createHash("sha256")
-    //     .update(b)
-    //     .digest("hex");
-    // console.log(BigInt("0x"+hash))
-    #[test(fx = @0x84b1a20dc7856a98f0cf77b27ad3e14b966aebba19bd87fb9bd05c6af21d7b37)]
-    fun test_sha256(fx: signer) {
-        let bytes = vector::empty<u8>();
-        vector::push_back<u8>(&mut bytes, 10);
-        vector::push_back<u8>(&mut bytes, 10);
-        let sha2_256: vector<u8> = hash::sha2_256(bytes);
-        debug::print(&sha2_256);
-    }
-
-    //This address should sha256 to that and the sha256 should ripemd160 to that
-    // address 0x061adee9bbb25279b4cdf7bb8da3e9c1f130bdaae3b5df15e5f68e5a598c140c
-    // sha256 0x6722e68b8e36b4d01cbea7fc0e783b4f544e6ecd3b31fa99e27a9e87a9824c9e
-    // ripemd from 0x713b39090a5c889a400ca473f2d27f4a7cd251b3
-    // THE JAVASCRIPT THAT WAS USED TO create this:
-    // const account = Account.generate();
-    // const address = account.accountAddress;
-    // const address_bytes = address.bcsToBytes();
-
-    // const hash = crypto.createHash("sha256")
-    //     .update(address_bytes).digest();
-
-    // const ripemd = crypto.createHash("ripemd160").update(hash).digest("hex");
-    // console.log("ripemd from", "0x" + ripemd);
-
-    #[test(fx = @0x0937da3b53461239e5b0f6a78fbd694aa9749893179decb7e383994a7041e4c0)]
-    fun test_sha256_address(fx: signer) {
-        let sender_addr = signer::address_of(&fx);
-        // let bytes = bcs::to_bytes<address>(&sender_addr);
-        // let sha2_256: vector<u8> = hash::sha2_256(bytes);
-        // debug::print(&sha2_256);
-
-        // let ripemd160: vector<u8> = aptos_hash::ripemd160(sha2_256);
-        // debug::print(&ripemd160);
-        let ripemd160 = hashTwice(sender_addr);
-        debug::print(&ripemd160);
-        // let expectedHash = x"3ba89024e1c7107c0f2b855e00c8abe0ca4ea386";
-
-        // assert!(ripemd160, expectedHash);
+        let strippedHash = hashAddressForSnark(sender_addr);
+        assert!(vector::length(&strippedHash) ==31);
     }
 }
