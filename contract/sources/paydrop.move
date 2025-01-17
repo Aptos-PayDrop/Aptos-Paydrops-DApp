@@ -327,6 +327,25 @@ module paydrop_addr::paydrop {
         enabled: bool // Withdrawals are enabled
 
     ) acquires Forest, FungibleStoreController {
+        new_droptree_internal(
+            sender,
+            root,
+            object::address_to_object<Metadata>(fa_address),
+            total_deposit,
+            total_leaves,
+            enabled
+        );
+    }
+
+    fun new_droptree_internal(
+        sender: &signer,
+        root: u256,
+        fa_metadata: Object<Metadata>,
+        total_deposit: u64,
+        total_leaves: u64,
+        enabled: bool
+
+    ) acquires Forest, FungibleStoreController {
         assert!(total_deposit > 0, ERR_AMOUNT_ZERO);
         assert!(total_leaves > 0, ERR_INVALID_LEAVES);
         assert!(total_leaves < 500000, ERR_TOO_MANY_LEAVES);
@@ -334,7 +353,7 @@ module paydrop_addr::paydrop {
         let sender_addr = signer::address_of(sender);
 
         // Now create the fa_metadata_object that will be used for the droptree
-        let fa_metadata = object::address_to_object<Metadata>(fa_address);
+        // let fa_metadata = object::address_to_object<Metadata>(fa_address);
 
         let store_signer = &generate_fungible_store_signer();
         let signer_addr = signer::address_of(store_signer);
@@ -391,16 +410,6 @@ module paydrop_addr::paydrop {
             }
         );
     }
-
-    fun newDroptree_internal(
-       sender: &signer, 
-        root: u256, 
-        fa_address: Object<Metadata>, 
-        total_deposit: u64, 
-        total_leaves: u64, 
-        enabled: bool 
-
-    ){}
 
     //The signer that created the droptree can withdraw it
     public entry fun refund_droptree(
@@ -807,5 +816,22 @@ module paydrop_addr::paydrop {
         sender: &signer, fee_manager_address: address
     ) {
         init_module_internal(sender, fee_manager_address);
+    }
+
+    #[test_only]
+    public fun new_droptree_for_test(
+        sender: &signer,
+        root: u256,
+        fa_metadata: Object<Metadata>,
+        total_deposit: u64,
+        total_leaves: u64,
+        enabled: bool) acquires Forest,FungibleStoreController{
+            new_droptree_internal(
+                sender,
+                root,
+                fa_metadata,
+                total_deposit,
+                total_leaves,
+                enabled);
     }
 }
