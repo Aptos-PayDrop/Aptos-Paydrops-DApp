@@ -4,7 +4,11 @@ import crypto from "crypto";
 import { buildPoseidon } from "circomlibjs";
 import { groth16 } from "snarkjs";
 import { Account } from "@aptos-labs/ts-sdk";
+import Blake2b from "blake2b-wasm";
 
+if (!Blake2b.SUPPORTED) {
+    console.log('WebAssembly not supported by your runtime')
+}
 
 export function generateAptosAccount() {
     const account = Account.generate();
@@ -12,13 +16,22 @@ export function generateAptosAccount() {
     return [account.accountAddress.toString(), account.accountAddress.bcsToBytes()];
 }
 
-export function hashTwice(address_bytes) {
-    const hash = crypto.createHash("sha256")
-        .update(address_bytes).digest();
-    const ripemd = crypto.createHash("ripemd160").update(hash).digest("hex");
-    return "0x" + ripemd;
-}
+export async function hashAddressForSnark(address_bytes) {
+    return new Promise(function (resolve, reject) {
+        Blake2b.ready(function (err) {
+            if (err) reject(err);
 
+            //Hash the address_bytes
+            const hashBuff = Blake2b().update(address_bytes).digest();
+            //convert to 31 bytes by slicing off the last byte
+            const hashSlice = hashBuff.slice(0, 31);
+            //convert to hex string         
+            const hexSlice = Array.from(hashSlice).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+            resolve("0x" + hexSlice);
+        })
+    })
+}
 
 /**
  * @returns {bigint} Returns a random bigint

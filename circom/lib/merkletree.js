@@ -1,5 +1,5 @@
 
-import { hashLeaves, rbigint, generateCommitmentHash, generateAptosAccount, hashTwice } from "./index.js";
+import { hashLeaves, rbigint, generateCommitmentHash, generateAptosAccount, hashAddressForSnark } from "./index.js";
 
 /**
  * The TREELEVELS constant specifies the size of the tree and it's levels and merkle proof size.
@@ -230,10 +230,11 @@ export async function populateTree(size) {
         amounts.push(amount);
         bcsBytesArray.push(bcsbytes);
 
-        const address_ripemd160 = hashTwice(bcsbytes);
+        const Blake2b_31Bytes = await hashAddressForSnark(bcsbytes);
 
-        const commitment = await generateCommitmentHash(address_ripemd160, amount)
+        const commitment = await generateCommitmentHash(Blake2b_31Bytes, amount)
         commitments.push(commitment);
+
     }
 
     return {

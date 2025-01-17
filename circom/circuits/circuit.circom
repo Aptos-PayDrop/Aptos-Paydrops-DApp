@@ -11,7 +11,7 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 template AddressAmountMerkleTreeChecker(levels){
     // Public inputs
 
-    signal input address; //It's actually a ripemd160 hash
+    signal input address; //It's actually a blake2b hash that was sliced to 31 bytes length
     signal input amount;
 
     signal input root;

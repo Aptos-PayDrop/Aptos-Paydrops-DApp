@@ -3,8 +3,6 @@ import assert from "assert";
 import { computeProof, verifyProof } from "../lib/index";
 import fs from "fs";
 import { getInput } from "./input.js";
-import { utils } from "ffjavascript"
-const { unstringifyBigInts, stringifyBigInts } = utils;
 
 it("Test commit-reveal scheme with fixed merkle tree", async function () {
     const { address, amount, pathElements, pathIndices, root } = await getInput();
@@ -25,14 +23,7 @@ it("Test commit-reveal scheme with fixed merkle tree", async function () {
             zkeyFilePath: zkeyPath,
         }
     })
-    // console.log("root", root);
-    // console.log("address", address);
-    // console.log("address bigint", BigInt(address));
-    // console.log("amount", amount);
 
-    // console.log(JSON.stringify(proof))
-    // console.log(JSON.stringify(publicSignals))
-    
     const verificationKeyFile = fs.readFileSync("circuits/compiled/verification_key.json", "utf-8");
     const verificationKey = JSON.parse(verificationKeyFile);
     const result = await verifyProof({ verificationKey, proof, publicSignals })

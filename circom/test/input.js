@@ -1,5 +1,5 @@
 
-import { buildHashImplementation, generateAptosAccount, hashTwice } from "../lib/index.js";
+import { buildHashImplementation, hashAddressForSnark } from "../lib/index.js";
 import assert from "assert";
 import { encodeForCircuit, generateMerkleProof, generateMerkleTree, getMerkleRootFromMerkleProof, populateTree } from "../lib/merkletree.js";
 /**
@@ -10,7 +10,7 @@ import { encodeForCircuit, generateMerkleProof, generateMerkleTree, getMerkleRoo
 export async function getInput() {
     await buildHashImplementation();
 
-    const size = 10;
+    const size = 1;
 
     const { addresses, amounts, commitments, bcsBytesArray } = await populateTree(size);
     // console.log(addresses);
@@ -23,7 +23,7 @@ export async function getInput() {
 
     const encodedProof = encodeForCircuit(merkleProof);
 
-    const addressHash = hashTwice(bcsBytesArray[0]);
+    const addressHash = await hashAddressForSnark(bcsBytesArray[0]);
 
     return {
         address: addressHash,
