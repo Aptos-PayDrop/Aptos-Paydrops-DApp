@@ -10,10 +10,10 @@ import { encodeForCircuit, generateMerkleProof, generateMerkleTree, getMerkleRoo
 export async function getInput() {
     await buildHashImplementation();
 
-    const size = 1;
+    const size = 2;
 
-    const { addresses, amounts, commitments, bcsBytesArray } = await populateTree(size);
-    // console.log(addresses);
+    const { addresses, amounts, commitments, bcsBytesArray,nonce } = await populateTree(size);
+    console.log(addresses);
     const merkleTree = await generateMerkleTree(structuredClone(commitments));
 
     const merkleProof = await generateMerkleProof(commitments[0], structuredClone(commitments), null);
@@ -28,7 +28,7 @@ export async function getInput() {
     return {
         address: addressHash,
         amount: amounts[0],
-
+        nonce: nonce,
         pathElements: encodedProof.pathElements,
         pathIndices: encodedProof.pathIndices,
         root: merkleRoot,

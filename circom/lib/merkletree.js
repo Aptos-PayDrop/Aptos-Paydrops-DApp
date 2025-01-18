@@ -221,6 +221,7 @@ export async function populateTree(size) {
     const bcsBytesArray = [];
     const amounts = [];
     const commitments = []; //commitments are the bottom leaves of the tree.
+    const nonce = rbigint();
 
     //Initialize the tree and create the bottom leaves
     for (let i = 0; i < size; i++) {
@@ -229,16 +230,15 @@ export async function populateTree(size) {
         addresses.push(address);
         amounts.push(amount);
         bcsBytesArray.push(bcsbytes);
-
         const Blake2b_31Bytes = await hashAddressForSnark(bcsbytes);
 
-        const commitment = await generateCommitmentHash(Blake2b_31Bytes, amount)
+        const commitment = await generateCommitmentHash(Blake2b_31Bytes, amount, nonce)
         commitments.push(commitment);
 
     }
 
     return {
-        addresses, amounts, commitments, bcsBytesArray
+        addresses, amounts, commitments, bcsBytesArray, nonce
     }
 }
 

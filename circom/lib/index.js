@@ -65,10 +65,11 @@ export async function poseidon(args) {
  * 
  * @param address {string | bigint} - The aptos address
  * @param amount {string | bigint} - The amount of tokens allowed to withdraw
+ * @param nonce {string | bigint} - Allow repeatability for addresses and amounts using a nonce
  * @returns {bigint} Returns a poseidon hash
  */
-export async function generateCommitmentHash(address, amount) {
-    return await poseidon([BigInt(address), BigInt(amount)])
+export async function generateCommitmentHash(address, amount,nonce) {
+    return await poseidon([BigInt(address), BigInt(amount),BigInt(nonce)])
 }
 
 /** Hashes the leaves of a merkle tree from left to right
