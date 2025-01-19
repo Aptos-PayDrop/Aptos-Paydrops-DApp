@@ -30,6 +30,7 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
+    use std::from_bcs;
 
     use std::vector;
     use std::aptos_hash;
@@ -81,7 +82,7 @@ module paydrop_addr::paydrop {
     const ONLY_CREATOR: u64 = 16000;
     const ERR_EXCEEDS_MAX_FEE: u64 = 17000;
     const ERR_INVALID_PROOF: u64 = 18000;
-
+    const ERR_ROOT_ALREADY_EXISTS: u64 = 19000;
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
         //The total deposit contained in the DropTree
@@ -155,7 +156,9 @@ module paydrop_addr::paydrop {
         vk_gamma_abc_3_x: u256,
         vk_gamma_abc_3_y: u256,
         vk_gamma_abc_4_x: u256,
-        vk_gamma_abc_4_y: u256
+        vk_gamma_abc_4_y: u256,
+        vk_gamma_abc_5_x: u256,
+        vk_gamma_abc_5_y: u256
     }
 
     #[event]
@@ -266,7 +269,9 @@ module paydrop_addr::paydrop {
         let vk_gamma_abc_3_y = *vector::borrow(&vkey, 19);
         let vk_gamma_abc_4_x = *vector::borrow(&vkey, 20);
         let vk_gamma_abc_4_y = *vector::borrow(&vkey, 21);
-
+        let vk_gamma_abc_5_x = *vector::borrow(&vkey, 22);
+        let vk_gamma_abc_5_y = *vector::borrow(&vkey, 23);
+        
         move_to(
             sender,
             VerificationKey {
@@ -291,7 +296,9 @@ module paydrop_addr::paydrop {
                 vk_gamma_abc_3_x,
                 vk_gamma_abc_3_y,
                 vk_gamma_abc_4_x,
-                vk_gamma_abc_4_y
+                vk_gamma_abc_4_y,
+                vk_gamma_abc_5_x,
+                vk_gamma_abc_5_y,
             }
         );
     }
@@ -388,6 +395,8 @@ module paydrop_addr::paydrop {
 
             let forest = get_forest_for_update(sender_addr);
 
+            // assert that the droptree doesn't exist already with the same root!
+            assert!(table::contains(&forest.trees, root) == false, ERR_ROOT_ALREADY_EXISTS);
             //If the droptree was not new, this should update the mutable reference and add a new droptree
             table::add(&mut forest.trees, root, droptree);
             forest.size = forest.size + 1;
@@ -452,13 +461,16 @@ module paydrop_addr::paydrop {
     //Claim a paydrop by proving the sender address is contained in the merkle root
     // The merkle root leaf is hash(sender address, withdraw amount),
     //The remaining arguments are a circom ZKP
+    //TODO: add a nonce to root creation, maybe increment the created addressess
     public entry fun claim_paydrop(
         sender: &signer,
         sponsor: address,
         root: u256,
         amount: u64,
+        nonce: u256,
         proof: vector<u256> // Contains 8 elements
-    ) acquires Forest, FungibleStoreController, Config, VerificationKey {
+    ) acquires Forest, FungibleStoreController, Config, VerificationKey
+     {
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
         //Check if the forest for the sponsor exists
@@ -486,10 +498,10 @@ module paydrop_addr::paydrop {
 
         //convert proof input
         let (a, b, c) = convert_proof_input(proof);
-        let public_inputs = prepare_public_signals(sender_addr, amount, root);
-        let (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc) = prepare_vkey();
+         let public_inputs = prepare_public_signals(sender_addr, amount, root, nonce);
+         let (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc) = prepare_vkey();
 
-        // verify proof
+        // // verify proof
         assert!(
             verify_proof<G1, G2, Gt, Fr>(
                 &vk_alpha,
@@ -629,34 +641,64 @@ module paydrop_addr::paydrop {
             &borrow_global<FungibleStoreController>(@paydrop_addr).extend_ref
         )
     }
-
+    
     inline fun prepare_public_signals(
-        sender_addr: address, amount: u64, root: u256
+        sender_addr: address,
+        amount: u64,
+        root: u256,
+        nonce: u256
     ): vector<Element<Fr>> {
         let hashedAddress_bytes = hashAddressForSnark(sender_addr);
+        
+        let hashedAddress_uint256 = convertHashToInt(hashedAddress_bytes);
+        let hashed_address_bcs = bcs::to_bytes<u256>(&hashedAddress_uint256);
+
         let public1_address =
             std::option::extract(
-                &mut deserialize<Fr, FormatFrLsb>(&hashedAddress_bytes)
+                &mut deserialize<Fr, FormatFrLsb>(&hashed_address_bcs)
             );
-        let amount_bytes = bcs::to_bytes<u64>(&amount);
+        
+        let castedAmount = amount as u256;
+
+       let amount_bytes = bcs::to_bytes<u256>(&castedAmount);
+
+
         let public2_amount =
             std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&amount_bytes));
+
         let root_bytes = bcs::to_bytes<u256>(&root);
         let public3_root =
             std::option::extract(&mut deserialize<Fr, FormatFrLsb>(&root_bytes));
+        let nonce_bytes = bcs::to_bytes<u256>(&nonce);
+        let public4_nonce = std::option::extract(
+            &mut deserialize<Fr, FormatFrLsb>(&nonce_bytes)
+        );
+        
 
-        let public_inputs: vector<Element<Fr>> = vector[public1_address, public2_amount, public3_root];
+        let public_inputs: vector<Element<Fr>> = vector[public1_address,public2_amount,public4_nonce,public3_root];
 
         public_inputs
     }
 
     //Hash address uses blake2b-256 and then strips the last byte to fit it into the zksnark
     //Javascript implementation uses blake2b-wasm
+    //Need to convert it to int with convertHashToInt to use it in the zkp
     inline fun hashAddressForSnark(sender_addr: address): vector<u8> {
         let bytes = bcs::to_bytes<address>(&sender_addr);
         let blake2b_256: vector<u8> = aptos_hash::blake2b_256(bytes);
         let byteSlice = vector::slice(&blake2b_256, 0, 31);
         byteSlice
+    }
+
+    inline fun convertHashToInt(hash: vector<u8>): u256{
+      let accumulator: u256 = hash[0] as u256;
+        for(iter in 1 ..31){
+          let bitShift: u8 = iter * 8;
+          let byte:u8 = hash[iter as u64];
+          let shift: u256 = (byte as u256) << bitShift;
+          accumulator += shift;
+        };  
+        accumulator
     }
 
     //Gets the vkey from storage and prepares it to be used for verification
@@ -691,6 +733,7 @@ module paydrop_addr::paydrop {
         vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
         vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
         vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
+        
         let vk_gamma =
             std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_gamma_bytes));
 
@@ -735,8 +778,17 @@ module paydrop_addr::paydrop {
             std::option::extract(
                 &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_4_bytes)
             );
+        
+        let vk_gamma_abc_5_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_x);
+        let vk_gamma_abc_5_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_y);
+        vector::append(&mut vk_gamma_abc_5_bytes, vk_gamma_abc_5_y_bytes);
+        let vk_gamma_abc_5 =
+            std::option::extract(
+                &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_5_bytes)
+            );
 
-        let vk_gamma_abc: vector<Element<G1>> = vector[vk_gamma_abc_1, vk_gamma_abc_2, vk_gamma_abc_3, vk_gamma_abc_4];
+
+        let vk_gamma_abc: vector<Element<G1>> = vector[vk_gamma_abc_1, vk_gamma_abc_2, vk_gamma_abc_3, vk_gamma_abc_4,vk_gamma_abc_5];
 
         (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc)
     }
