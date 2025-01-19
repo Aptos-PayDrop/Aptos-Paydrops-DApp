@@ -230,9 +230,9 @@ export async function populateTree(size) {
         addresses.push(address);
         amounts.push(amount);
         bcsBytesArray.push(bcsbytes);
-        const Blake2b_31Bytes = await hashAddressForSnark(bcsbytes);
+        const address_hashBigint = await hashAddressForSnark(bcsbytes);
 
-        const commitment = await generateCommitmentHash(Blake2b_31Bytes, amount, nonce)
+        const commitment = await generateCommitmentHash(address_hashBigint, amount, nonce)
         commitments.push(commitment);
 
     }

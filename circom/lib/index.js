@@ -25,12 +25,23 @@ export async function hashAddressForSnark(address_bytes) {
             const hashBuff = Blake2b().update(address_bytes).digest();
             //convert to 31 bytes by slicing off the last byte
             const hashSlice = hashBuff.slice(0, 31);
-            //convert to hex string         
-            const hexSlice = Array.from(hashSlice).map((b) => b.toString(16).padStart(2, "0")).join("");
+            // //convert to hex string         
+            // const hexSlice = Array.from(hashSlice).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-            resolve("0x" + hexSlice);
+            resolve(convertHashToBigInt(hashSlice));
         })
     })
+}
+
+
+function convertHashToBigInt(byte) {
+    let accumulator = BigInt(byte[0]);
+
+    for (let i = 1; i < 31; i++) {
+        let shift = BigInt(i) * 8n;
+        accumulator += BigInt(byte[i]) << shift;
+    }
+    return accumulator;
 }
 
 /**
@@ -68,8 +79,8 @@ export async function poseidon(args) {
  * @param nonce {string | bigint} - Allow repeatability for addresses and amounts using a nonce
  * @returns {bigint} Returns a poseidon hash
  */
-export async function generateCommitmentHash(address, amount,nonce) {
-    return await poseidon([BigInt(address), BigInt(amount),BigInt(nonce)])
+export async function generateCommitmentHash(address, amount, nonce) {
+    return await poseidon([BigInt(address), BigInt(amount), BigInt(nonce)])
 }
 
 /** Hashes the leaves of a merkle tree from left to right
