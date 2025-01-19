@@ -174,6 +174,7 @@ module paydrop_addr::test_end_to_end {
         let sender_addr = signer::address_of(sender);
         let fee_manager_addr = signer::address_of(fee_manager);
         let droptree_creator_addr = signer::address_of(droptree_creator);
+        let claimer_address = signer::address_of(drop_claimer1);
 
         let deposit_amount = 100;
 
@@ -293,6 +294,11 @@ module paydrop_addr::test_end_to_end {
 
         //Check if an address is nullfied
 
+       let claimerNullified = paydrop::is_nullified(droptree_creator_addr, root,claimer_address);
+
+       assert!(!claimerNullified);
+
+
         // claim a drop from a tree
         let proof = vector::empty();
         let a_x: u256 = 1331715864425932513326850596786746336644056006656421178687142765911591792318;
@@ -319,9 +325,34 @@ module paydrop_addr::test_end_to_end {
 
         //test if the address got nullified now
 
-        // then claim all the drops
+       let claimerNullified = paydrop::is_nullified(droptree_creator_addr, root,claimer_address);
+
+       assert!(claimerNullified);
+
+        //TODO: Test the balances of the account
+        let claimer_balance = primary_fungible_store::balance(claimer_address,fa_metadata_object);
+        
+        assert!(claimer_balance == 10);
+
+        let (
+            droptreeDetails_total_deposit,
+            droptreeDetails_deposit_left,
+            droptreeDetails_total_leaves,
+            droptreeDetails_unused_leaves,
+            droptreeDetails_fa_metadata,
+            droptreeDetails_enabled
+        ) = paydrop::droptree_details(droptree_creator_addr, root);
+
+        assert!(droptreeDetails_total_deposit == deposit_amount);
+        assert!(droptreeDetails_deposit_left == 90);
+        assert!(droptreeDetails_total_leaves == 2);
+        assert!(droptreeDetails_unused_leaves == 1);
+        assert!(droptreeDetails_enabled == true);
+
 
     }
+
+    //TODO: make a test when you got 2 claims, but then there is 
 
     //This function just creates a contract and tests setting the fees
     #[test(sender = @0x1, fee_manager = @0x1023)]

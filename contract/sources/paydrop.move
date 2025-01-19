@@ -550,6 +550,11 @@ module paydrop_addr::paydrop {
 
         droptree.unused_leaves = droptree.unused_leaves - 1;
 
+        //If there are no more deposits left it's disabled
+        if(droptree.deposit_left == 0 ){
+            droptree.enabled = false;
+        };
+
         //emit an event
         event::emit(
             DropClaimed { sponsor, merkle_root: root, recipient: sender_addr, amount }
