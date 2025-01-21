@@ -30,7 +30,6 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
-    use std::from_bcs;
 
     use std::vector;
     use std::aptos_hash;
@@ -131,6 +130,18 @@ module paydrop_addr::paydrop {
         //The withdraw fee
         fee: u64
         //The verification elements are set by the contract_creator using an init function
+    }
+
+    //Structs to fetch from the UI the history of a drop claimer
+    struct ClaimHistoryParameters has store,copy {
+        sponsor: address,
+        root: u256,
+        amount: u64,
+        fa_metadata: Object<Metadata>
+    }
+
+    struct ClaimHistory has key{
+       myHistory : vector<ClaimHistoryParameters>
     }
 
     //Global per contract, contains the verification key parameters
@@ -461,7 +472,6 @@ module paydrop_addr::paydrop {
     //Claim a paydrop by proving the sender address is contained in the merkle root
     // The merkle root leaf is hash(sender address, withdraw amount),
     //The remaining arguments are a circom ZKP
-    //TODO: add a nonce to root creation, maybe increment the created addressess
     public entry fun claim_paydrop(
         sender: &signer,
         sponsor: address,
@@ -469,7 +479,7 @@ module paydrop_addr::paydrop {
         amount: u64,
         nonce: u256,
         proof: vector<u256> // Contains 8 elements
-    ) acquires Forest, FungibleStoreController, Config, VerificationKey
+    ) acquires Forest, FungibleStoreController, Config, VerificationKey,ClaimHistory
      {
         //I get the address of the sender
         let sender_addr = signer::address_of(sender);
@@ -554,7 +564,7 @@ module paydrop_addr::paydrop {
         if(droptree.deposit_left == 0 ){
             droptree.enabled = false;
         };
-
+        add_claim_history(sender,sponsor,root,amount,droptree.fa_metadata_object);
         //emit an event
         event::emit(
             DropClaimed { sponsor, merkle_root: root, recipient: sender_addr, amount }
@@ -624,6 +634,12 @@ module paydrop_addr::paydrop {
         config.fee
     }
 
+    #[view]
+    public fun get_claim_history(for_address: address): vector<ClaimHistoryParameters> acquires ClaimHistory{
+        let fee_history = borrow_global<ClaimHistory>(for_address);
+        fee_history.myHistory
+    }
+
     inline fun tree_selector(sponsor: address, root: u256): &DropTree {
         let forest = get_forest(sponsor);
         assert!(table::contains(&forest.trees, root), EDROPTREE_NOT_FOUND);
@@ -639,6 +655,34 @@ module paydrop_addr::paydrop {
         assert!(exists<Forest>(sponsor), ESPONSOR_ACCOUNT_NOT_INITIALIZED);
         borrow_global_mut<Forest>(sponsor)
     }
+
+    inline fun add_claim_history(sender: &signer,sponsor: address,root:u256,amount:u64, fa_metadata: Object<Metadata>){
+    let sender_addr = signer::address_of(sender);
+      if(exists<ClaimHistory>(sender_addr)){
+            let history = borrow_global_mut<ClaimHistory>(sender_addr);
+            vector::push_back(&mut history.myHistory,ClaimHistoryParameters{
+                sponsor,
+                root,
+                amount,
+                fa_metadata
+            });
+        } else{
+            //Create new claim history
+
+            let history = ClaimHistory{
+                myHistory : vector::empty()
+            };
+
+            vector::push_back(&mut history.myHistory,ClaimHistoryParameters{
+                sponsor,
+                root,
+                amount,
+               fa_metadata
+            });
+            move_to(sender,history);
+        };
+    }
+
 
     // Generate signer to send value from fungible stores
     fun generate_fungible_store_signer(): signer acquires FungibleStoreController {
