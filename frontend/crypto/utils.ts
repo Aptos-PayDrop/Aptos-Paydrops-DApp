@@ -8,11 +8,11 @@ import Blake2b from "blake2b-wasm";
 
 
 //Returns false if wasm is not supported by the browser
-export function isWasmSupported(){
+export function isWasmSupported() {
     return Blake2b.SUPPORTED;
 }
 
-export async function hashAddressForSnark(address_bytes: Buffer) {
+export async function hashAddressForSnark(address_bytes: Buffer | Uint8Array): Promise<bigint> {
     return new Promise(function (resolve, reject) {
         Blake2b.ready(function (err: any) {
             if (err) reject(err);
@@ -22,8 +22,6 @@ export async function hashAddressForSnark(address_bytes: Buffer) {
             //convert to 31 bytes by slicing off the last byte
             const hashSlice = hashBuff.slice(0, 31);
             // //convert to hex string         
-            // const hexSlice = Array.from(hashSlice).map((b) => b.toString(16).padStart(2, "0")).join("");
-
             resolve(convertHashToBigInt(hashSlice));
         })
     })
@@ -77,7 +75,7 @@ export async function poseidon(args: Array<BigInt>) {
  * @param nonce {string | bigint} - Allow repeatability for addresses and amounts using a nonce
  * @returns {bigint} Returns a poseidon hash
  */
-export async function generateCommitmentHash(address: string | bigint, amount: string | bigint, nonce: string | bigint) {
+export async function generateCommitmentHash(address: string | bigint, amount: string | bigint | number, nonce: string | bigint) {
     return await poseidon([BigInt(address), BigInt(amount), BigInt(nonce)])
 }
 
@@ -103,7 +101,7 @@ export async function hashLeaves(left: bigint, right: bigint) {
  * @param {string} options.snarkArtifacts.wasmFilePath - Path to the generated witness file
  * @param {string} options.snarkArtifacts.zkeyFilePath - Path to the generated zKey file
  */
-export async function computeProof({ pathElements, pathIndices, publicInputs, snarkArtifacts }:{
+export async function computeProof({ pathElements, pathIndices, publicInputs, snarkArtifacts }: {
     pathElements: Array<bigint> | Array<string>,
     pathIndices: Array<bigint> | Array<string>,
     publicInputs: Object,
@@ -142,7 +140,7 @@ export async function computeProof({ pathElements, pathIndices, publicInputs, sn
 * @returns {boolean} True if the proof is valid, false otherwise.
 */
 
-export function verifyProof({ verificationKey, proof, publicSignals }:{
+export function verifyProof({ verificationKey, proof, publicSignals }: {
     verificationKey: any,
     proof: any,
     publicSignals: any
