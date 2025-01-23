@@ -1,5 +1,6 @@
 
 import { hashLeaves, rbigint, generateCommitmentHash, hashAddressForSnark } from "./utils";
+import { Progress } from "../lib/verifyAndBuildTree";
 
 /**
  * The TREELEVELS constant specifies the size of the tree and it's levels and merkle proof size.
@@ -39,7 +40,7 @@ type MerkleProof = Array<MerkleProofParams>
 
  * @returns {Array<bigint>} - The merkle root, which is an array with a single element
  */
-export async function generateMerkleRoot(leaves : Array<bigint>, tree: any): Promise<Array<bigint>> {
+export async function generateMerkleRoot(leaves: Array<bigint>, tree: any, onProgress: CallableFunction | undefined): Promise<Array<bigint>> {
     if (leaves.length === 0) {
         return [];
     }
@@ -47,6 +48,12 @@ export async function generateMerkleRoot(leaves : Array<bigint>, tree: any): Pro
     ensureEven(leaves);
     const combinedHashes = [];
     for (let i = 0; i < leaves.length; i += 2) {
+        if (onProgress) {
+            if (i % 100 === 0) {
+                onProgress(Progress.treeProgress, `Processing leaves ${i}/${leaves.length}`)
+            }
+        }
+
         const newHash = await hashLeaves(leaves[i], leaves[i + 1])
         combinedHashes.push(newHash)
 
@@ -56,7 +63,7 @@ export async function generateMerkleRoot(leaves : Array<bigint>, tree: any): Pro
     if (combinedHashes.length === 1) {
         return combinedHashes;
     }
-    return await generateMerkleRoot(combinedHashes, tree);
+    return await generateMerkleRoot(combinedHashes, tree, onProgress);
 }
 
 /**
@@ -65,9 +72,9 @@ export async function generateMerkleRoot(leaves : Array<bigint>, tree: any): Pro
 
  * @returns - The merkle tree and the root
  */
-export async function generateMerkleTree(leaves: Array<bigint>) {
+export async function generateMerkleTree(leaves: Array<bigint>, onProgress: CallableFunction | undefined) {
     const tree = { layers: [leaves] }
-    await generateMerkleRoot(leaves, tree);
+    await generateMerkleRoot(leaves, tree, onProgress);
     // Padding the tree here so we can use it in circom with a hard coded 20 level tree
     return await padTree(tree);
 }
@@ -83,11 +90,11 @@ export async function generateMerkleTree(leaves: Array<bigint>) {
  * @returns {MerkleProof | null} - Returns the valid merkle proof or returns null if the leaves are empty
  */
 
-export async function generateMerkleProof(leaf: bigint, leaves: Array<bigint>, cachedTree : Array<Array<bigint>> | null) {
+export async function generateMerkleProof(leaf: bigint, leaves: Array<bigint>, cachedTree: Array<Array<bigint>> | null) {
     if (!leaf || !leaves || leaves.length === 0) {
         return null;
     }
-    const { tree } = cachedTree !== null ? { tree: cachedTree } : await generateMerkleTree(leaves);
+    const { tree } = cachedTree !== null ? { tree: cachedTree } : await generateMerkleTree(leaves, undefined);
 
     const merkleProof = [{
         hash: leaf,
@@ -116,7 +123,7 @@ export async function generateMerkleProof(leaf: bigint, leaves: Array<bigint>, c
  */
 
 // Reduce the merkle proof to a root by hashing the leaves and determining direction!
-export async function getMerkleRootFromMerkleProof(merkleProof : MerkleProof) {
+export async function getMerkleRootFromMerkleProof(merkleProof: MerkleProof) {
     let accumulator = { hash: merkleProof[0].hash };
     for (let i = 1; i < merkleProof.length; i++) {
         const node = merkleProof[i];
@@ -144,7 +151,7 @@ export async function getMerkleRootFromMerkleProof(merkleProof : MerkleProof) {
  * @returns {EncodedForCircuit}
  */
 
-export function encodeForCircuit(merkleProof : MerkleProof) {
+export function encodeForCircuit(merkleProof: MerkleProof) {
     let pathElements = [];
     let pathIndices = [];
     for (let i = 0; i < merkleProof.length; i++) {
@@ -170,7 +177,7 @@ const getLeafNodeDirectionInMerkleTree = (leaf: bigint, merkleTree: bigint[][]) 
 };
 
 type MerkleTree = {
-    layers : bigint[][]
+    layers: bigint[][]
 }
 
 /**
