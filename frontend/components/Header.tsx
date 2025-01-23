@@ -2,6 +2,7 @@ import { IS_DEV } from "@/constants";
 import { Link } from "react-router-dom";
 import { WalletSelector } from "./WalletSelector";
 import { buttonVariants } from "./ui/button";
+import {Text} from "@radix-ui/themes";
 
 export function Header({title}: {title: string}) {
 
@@ -15,12 +16,12 @@ export function Header({title}: {title: string}) {
         {IS_DEV && (
           <>
           <Link className={buttonVariants({ variant: "link" })} to={"/"}>
-          Claim Paydrops
+            <Text >Claim Paydrops</Text>
         </Link>
-            <Link className={buttonVariants({ variant: "link" })} to={"/my-assets"}>
+            <Link className={buttonVariants({ variant: "link" })} to={"/history"}>
               History
             </Link>
-            <Link className={buttonVariants({ variant: "link" })} to={"/create-asset"}>
+            <Link className={buttonVariants({ variant: "link" })} to={"/create-droptree"}>
               Fund Paydrops
             </Link>
           </>
