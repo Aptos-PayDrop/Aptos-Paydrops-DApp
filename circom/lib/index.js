@@ -26,7 +26,6 @@ export async function hashAddressForSnark(address_bytes) {
             //convert to 31 bytes by slicing off the last byte
             const hashSlice = hashBuff.slice(0, 31);
             // //convert to hex string         
-            // const hexSlice = Array.from(hashSlice).map((b) => b.toString(16).padStart(2, "0")).join("");
 
             resolve(convertHashToBigInt(hashSlice));
         })

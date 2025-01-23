@@ -5,10 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit",
-    "new": "node ./lib/run.js new",
-    "proof": "node ./lib/run.js proof",
-    "verify": "node ./lib/run.js verify",
-    "aptostests": "node ./lib/aptos.js"
+    "testCSV": "node ./test/composeTestCSV.js"
   },
   "author": "",
   "license": "ISC",
