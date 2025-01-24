@@ -57,10 +57,10 @@ export const fundNode = async (aptosWallet: WalletContextState, amount?: number)
   }
 };
 
-export const uploadFile = async (aptosWallet: WalletContextState, fileToUpload: File): Promise<string> => {
+export const uploadFile = async (aptosWallet: WalletContextState, fileToUpload: File, tags: Array<{ name: string, value: string }>): Promise<string> => {
   const webIrys = await getIrys(aptosWallet);
   try {
-    const receipt = await webIrys.uploadFile(fileToUpload, { tags: [] });
+    const receipt = await webIrys.uploadFile(fileToUpload, { tags });
     return `https://gateway.irys.xyz/${receipt.id}`;
   } catch (e) {
     throw new Error(`Error uploading file ${e}`);
