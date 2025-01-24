@@ -1,6 +1,5 @@
 
-import { hashLeaves, rbigint, generateCommitmentHash, hashAddressForSnark } from "./utils";
-import { Progress } from "../lib/verifyAndBuildTree";
+import { hashLeaves } from "./utils";
 
 /**
  * The TREELEVELS constant specifies the size of the tree and it's levels and merkle proof size.
@@ -48,11 +47,7 @@ export async function generateMerkleRoot(leaves: Array<bigint>, tree: any, onPro
     ensureEven(leaves);
     const combinedHashes = [];
     for (let i = 0; i < leaves.length; i += 2) {
-        if (onProgress) {
-            if (i % 100 === 0) {
-                onProgress(Progress.treeProgress, `Processing leaves ${i}/${leaves.length}`)
-            }
-        }
+      
 
         const newHash = await hashLeaves(leaves[i], leaves[i + 1])
         combinedHashes.push(newHash)
