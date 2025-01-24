@@ -5,7 +5,7 @@ module paydrop_addr::test_end_to_end {
     use std::option;
     use std::string;
     use std::vector;
-
+    use std::string::{utf8};
     use aptos_framework::fungible_asset::{Self, Metadata};
     use aptos_framework::object;
     use aptos_framework::primary_fungible_store;
@@ -83,7 +83,9 @@ module paydrop_addr::test_end_to_end {
             fa_metadata_object,
             deposit_amount,
             2,
-            false
+            false,
+            utf8(b"")
+            
         );
 
         creator_balance_1 = primary_fungible_store::balance(
@@ -99,7 +101,8 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
             droptreeDetails_fa_metadata,
-            droptreeDetails_enabled
+            droptreeDetails_enabled,
+            droptreeDetails_url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_total_deposit == 100);
@@ -117,7 +120,8 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
             droptreeDetails_fa_metadata,
-            droptreeDetails_enabled
+            droptreeDetails_enabled,
+            url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_enabled);
@@ -131,7 +135,8 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
             droptreeDetails_fa_metadata,
-            droptreeDetails_enabled
+            droptreeDetails_enabled,
+            url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_total_deposit == 100);
@@ -289,7 +294,8 @@ module paydrop_addr::test_end_to_end {
             fa_metadata_object,
             deposit_amount,
             2,
-            true
+            true,
+            utf8(b"")
         );
 
         //Check if an address is nullfied
@@ -340,7 +346,8 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
             droptreeDetails_fa_metadata,
-            droptreeDetails_enabled
+            droptreeDetails_enabled,
+            url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_total_deposit == deposit_amount);

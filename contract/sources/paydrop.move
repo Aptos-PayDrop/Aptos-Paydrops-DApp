@@ -30,6 +30,7 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
+      use std::string::{String};
 
     use std::vector;
     use std::aptos_hash;
@@ -103,7 +104,9 @@ module paydrop_addr::paydrop {
         //The fungible store that holds the deposit
         deposit_store: Object<FungibleStore>,
         //paydrop Withdrawals are enabled?
-        enabled: bool
+        enabled: bool,
+        //The URL for the merkle tree
+        url: String
 
     }
 
@@ -342,7 +345,8 @@ module paydrop_addr::paydrop {
         fa_address: address, //The address of the fungible asset selected
         total_deposit: u64, //The deposit of fungible asset
         total_leaves: u64, // the leaves deposited,
-        enabled: bool // Withdrawals are enabled
+        enabled: bool, // Withdrawals are enabled,
+        url: String // The url for the merkle tree
 
     ) acquires Forest, FungibleStoreController {
         new_droptree_internal(
@@ -351,7 +355,8 @@ module paydrop_addr::paydrop {
             object::address_to_object<Metadata>(fa_address),
             total_deposit,
             total_leaves,
-            enabled
+            enabled,
+            url
         );
     }
 
@@ -361,7 +366,8 @@ module paydrop_addr::paydrop {
         fa_metadata: Object<Metadata>,
         total_deposit: u64,
         total_leaves: u64,
-        enabled: bool
+        enabled: bool,
+        url: String
 
     ) acquires Forest, FungibleStoreController {
         assert!(total_deposit > 0, ERR_AMOUNT_ZERO);
@@ -399,7 +405,8 @@ module paydrop_addr::paydrop {
             unused_leaves: total_leaves,
             fa_metadata_object: fa_metadata,
             deposit_store: deposit_store,
-            enabled
+            enabled,
+            url
         };
 
         if (exists<Forest>(sender_addr)) {
@@ -597,7 +604,7 @@ module paydrop_addr::paydrop {
     //Returns the sponsors drop tree using the root hash
     public fun droptree_details(
         sponsor: address, root: u256
-    ): (u64, u64, u64, u64, Object<Metadata>, bool) acquires Forest {
+    ): (u64, u64, u64, u64, Object<Metadata>, bool,String) acquires Forest {
         let selected_tree = tree_selector(sponsor, root);
         (
             selected_tree.total_deposit,
@@ -605,7 +612,8 @@ module paydrop_addr::paydrop {
             selected_tree.total_leaves,
             selected_tree.unused_leaves,
             selected_tree.fa_metadata_object,
-            selected_tree.enabled
+            selected_tree.enabled,
+            selected_tree.url
         )
     }
 
@@ -929,7 +937,8 @@ module paydrop_addr::paydrop {
         fa_metadata: Object<Metadata>,
         total_deposit: u64,
         total_leaves: u64,
-        enabled: bool
+        enabled: bool,
+        url: String
     ) acquires Forest, FungibleStoreController {
         new_droptree_internal(
             sender,
@@ -937,7 +946,8 @@ module paydrop_addr::paydrop {
             fa_metadata,
             total_deposit,
             total_leaves,
-            enabled
+            enabled,
+            url
         );
     }
 }
