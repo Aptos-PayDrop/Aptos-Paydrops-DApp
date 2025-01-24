@@ -13,7 +13,8 @@ type NewDropTreeArgs = {
   total_deposit: number,
   total_deposit_decimals: number,
   total_leaves: number,
-  enabled: boolean
+  enabled: boolean,
+  url: string
 }
 
 //TODO: make sure total_deposit is not overflowing the max number
@@ -27,7 +28,8 @@ export const newDroptree = (args: NewDropTreeArgs): InputTransactionData => {
         AccountAddress.fromString(args.fa_address),
         new U64(convertAmountFromHumanReadableToOnChain(args.total_deposit, args.total_deposit_decimals)),
         new U64(args.total_leaves),
-        new Bool(args.enabled)
+        new Bool(args.enabled),
+        args.url
       ]
     }
   }
