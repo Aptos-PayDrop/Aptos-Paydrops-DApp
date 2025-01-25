@@ -275,6 +275,7 @@ export function CreateDropTree() {
       const treeFile = new File([merkleTreeBlob], "merkletree.json", { type: "application/json" });
       const tags: Array<{ name: string, value: string }> = [
         { name: "Content-Type", value: "application/json" },
+        {name: "App", value: "Aptos-Paydrop"},
         { name: "Root", value: (merkleTreeData.root as bigint).toString() },
         { name: "Sponsor", value: account.address },
         { name: "Leaves", value: `${merkleTreeData.leaves.length}` },
