@@ -30,7 +30,7 @@
 module paydrop_addr::paydrop {
     use std::signer;
     use std::bcs;
-      use std::string::{String};
+    use std::string::{String};
 
     use std::vector;
     use std::aptos_hash;
@@ -473,7 +473,8 @@ module paydrop_addr::paydrop {
 
         //Emit the event that the drop tree was refunded
 
-        event::emit(DropRefunded { sponsor: sender_addr, merkle_root: root })
+        event::emit(DropRefunded {sponsor: sender_addr, merkle_root: root
+})
     }
 
     //Claim a paydrop by proving the sender address is contained in the merkle root
@@ -571,7 +572,7 @@ module paydrop_addr::paydrop {
         if(droptree.deposit_left == 0 ){
             droptree.enabled = false;
         };
-        add_claim_history(sender,sponsor,root,amount,droptree.fa_metadata_object);
+        add_claim_history(sender,sponsor,root,finalAmount,droptree.fa_metadata_object);
         //emit an event
         event::emit(
             DropClaimed { sponsor, merkle_root: root, recipient: sender_addr, amount }
