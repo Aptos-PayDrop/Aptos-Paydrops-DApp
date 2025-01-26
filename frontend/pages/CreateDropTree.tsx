@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WarningAlert } from "@/components/ui/warning-alert";
-import { UploadSpinner } from "@/components/UploadSpinner";
+import { PayDropsSpinner, UploadSpinner } from "@/components/UploadSpinner";
 import { LabeledInput } from "@/components/ui/labeled-input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 // Internal utils
@@ -19,11 +19,11 @@ import { aptosClient } from "@/utils/aptosClient";
 import { IS_PROD } from "@/constants";
 // Entry functions
 import { Header } from "@/components/Header";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { parseTextToCSV } from "@/lib/csv";
 import { Progress, verifyAndBuildTree } from "@/lib/verifyAndBuildTree";
-import { Fa_metadata, query_fungible_asset_metadata } from "@/view-functions/graphql";
+import { query_fungible_asset_metadata } from "@/view-functions/graphql";
 import { Progress as ProgressIndicator } from "@/components/ui/progress";
 import { newDroptree } from "@/entry-functions/new_droptree";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -105,7 +105,7 @@ export function CreateDropTree() {
     });
   }
 
-  const toast_success = (title: string, description: string) => {
+  const toast_default = (title: string, description: string) => {
     toast({
       variant: "default",
       title,
@@ -275,7 +275,7 @@ export function CreateDropTree() {
       const treeFile = new File([merkleTreeBlob], "merkletree.json", { type: "application/json" });
       const tags: Array<{ name: string, value: string }> = [
         { name: "Content-Type", value: "application/json" },
-        {name: "App", value: "Aptos-Paydrop"},
+        { name: "App", value: "Aptos-Paydrop" },
         { name: "Root", value: (merkleTreeData.root as bigint).toString() },
         { name: "Sponsor", value: account.address },
         { name: "Leaves", value: `${merkleTreeData.leaves.length}` },
@@ -284,7 +284,7 @@ export function CreateDropTree() {
         { name: "Decimals", value: fa_metadata.decimals.toString() }
       ]
       const merkleTreeUrl = await uploadFile(aptosWallet, treeFile, tags);
-
+      console.log(merkleTreeUrl)
       // //Submit the create_dropTree entry transaction
       const inputTransaction = newDroptree({
         root: merkleTreeData.root as bigint,
@@ -337,15 +337,17 @@ export function CreateDropTree() {
             </WarningAlert>
           )}
 
-
-
-          <UploadSpinner on={isUploading} />
+          <PayDropsSpinner on={isUploading} />
 
           <Card>
-            <CardHeader>
-              <CardTitle>Payment Details</CardTitle>
-              <LabeledInput
 
+
+            <CardHeader>
+              <CardTitle className="flex flex-row justify-between">
+                Payment Details<Link className={buttonVariants({ variant: "outline" })} to="/droptree-history">Go to History</Link>
+              </CardTitle>
+              <LabeledInput
+                value={fa_address}
                 id="fungible-asset-address"
                 label="Fungible Asset Address"
                 tooltip="The address of the Fungible Asset that will be deposited"
@@ -431,7 +433,7 @@ export function CreateDropTree() {
 
                       <Button onClick={async () => {
                         setMiningStarted(true);
-                        toast_success("Mining started", "You need to mine the merkle tree, this may take a few moments")
+                        toast_default("Mining started", "You need to mine the merkle tree, this may take a few moments")
 
                         await mine_merkletree()
                       }} variant="secondary" disabled={verifiedEntries !== totalEntries || !miningEnabled}>Mine Merkle Tree</Button>
