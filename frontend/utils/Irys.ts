@@ -66,3 +66,88 @@ export const uploadFile = async (aptosWallet: WalletContextState, fileToUpload: 
     throw new Error(`Error uploading file ${e}`);
   }
 };
+
+
+export async function fetchTreeByRoot(root: string,): Promise<{
+  found: boolean,
+  data: any,
+  error: string
+}> {
+  try {
+    const graphqlURL = NETWORK === "testnet" ? "https://devnet.irys.xyz/graphql" : "https://uploader.irys.xyz/graphql";
+    // const graphqlURL = "https://uploader.irys.xyz/graphql"
+    const query = `
+  query getPaydrops($root: String!) {
+	transactions(tags: [
+		{ name: "App", values: ["Aptos-Paydrop"] },
+		{name: "Root", values: [$root]}
+		
+		]) {
+		edges {
+			node {
+				id
+				address
+			}
+		}
+	}
+}
+  `
+
+    const variables = {
+      root
+    }
+
+    const res = await fetch(graphqlURL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query,
+        variables
+      })
+    })
+
+    const json = await res.json();
+    const foundIt = json?.data?.transactions?.edges?.length !== 0;
+    if (!foundIt) {
+      return {
+        found: false,
+        error: "not found",
+        data: {}
+      }
+    }
+    const edge = json.data.transactions.edges[0];
+    const address = edge.node.address;
+    const id = edge.node.id;
+
+
+    return {
+      found: true,
+      error: "",
+      data: {
+        address, id
+      }
+    }
+  } catch (err: any) {
+    return {
+      found: false,
+      error: err.message,
+      data: {}
+    }
+  }
+}
+
+export async function fetchMerkleTree(id: string) {
+  const dataURL = NETWORK === "testnet" ? `https://devnet.irys.xyz/${id}` : `https://uploader.irys.xyz/${id}`;
+
+  const fetchedData = await fetch(dataURL, {
+    method: "GET"
+  });
+
+
+  const json = await fetchedData.json();
+
+  return json
+
+}
