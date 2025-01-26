@@ -1,6 +1,5 @@
 #[test_only]
 module paydrop_addr::test_end_to_end {
-    use aptos_std::debug;
     use std::signer;
     use std::option;
     use std::string;
@@ -14,7 +13,7 @@ module paydrop_addr::test_end_to_end {
 
     #[
         test(
-            sender = @0x1,
+            sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0,
             droptree_creator = @0x100,
             drop_claimer1 =
             @0x7e8ef4d931b6f7f55c2cfe73483d1bd4c1440d6cefb03815984ac8cb059e2927,
@@ -100,9 +99,9 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_deposit_left,
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
-            droptreeDetails_fa_metadata,
+            _droptreeDetails_fa_metadata,
             droptreeDetails_enabled,
-            droptreeDetails_url
+            _droptreeDetails_url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_total_deposit == 100);
@@ -119,9 +118,9 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_deposit_left,
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
-            droptreeDetails_fa_metadata,
+            _droptreeDetails_fa_metadata,
             droptreeDetails_enabled,
-            url
+            _url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_enabled);
@@ -134,9 +133,9 @@ module paydrop_addr::test_end_to_end {
             droptreeDetails_deposit_left,
             droptreeDetails_total_leaves,
             droptreeDetails_unused_leaves,
-            droptreeDetails_fa_metadata,
+            _droptreeDetails_fa_metadata,
             droptreeDetails_enabled,
-            url
+            _url
         ) = paydrop::droptree_details(droptree_creator_addr, root);
 
         assert!(droptreeDetails_total_deposit == 100);
@@ -158,7 +157,8 @@ module paydrop_addr::test_end_to_end {
 
     #[
         test(
-            sender = @0x1,
+            aptos_framework = @0x1,
+            sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0,
             droptree_creator = @0x100,
             drop_claimer1 =
             @0xa84b5df0681d7572218e67c1a7f601cf0a6762732525e87fb7833dd7934aeb04,
@@ -168,13 +168,14 @@ module paydrop_addr::test_end_to_end {
         )
     ]
     fun test_claimDropt(
+        aptos_framework: &signer,
         sender: &signer,
         droptree_creator: &signer,
         drop_claimer1: &signer,
         drop_claimer2: &signer,
         fee_manager: &signer
     ) {
-        enable_cryptography_algebra_natives(sender);
+        enable_cryptography_algebra_natives(aptos_framework);
 
         let sender_addr = signer::address_of(sender);
         let fee_manager_addr = signer::address_of(fee_manager);
@@ -362,7 +363,7 @@ module paydrop_addr::test_end_to_end {
     //TODO: make a test when you got 2 claims, but then there is 
 
     //This function just creates a contract and tests setting the fees
-    #[test(sender = @0x1, fee_manager = @0x1023)]
+    #[test(sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0, fee_manager = @0x1023)]
     fun test_fees(sender: &signer, fee_manager: &signer) {
         let sender_addr = signer::address_of(sender);
         let fee_manager_addr = signer::address_of(fee_manager);
