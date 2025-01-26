@@ -3,6 +3,7 @@ import { RouterProvider, createBrowserRouter, Outlet } from "react-router-dom";
 import { ClaimPaydrops } from "@/pages/ClaimPaydrops";
 import { CreateDropTree } from "@/pages/CreateDropTree";
 import { MyHistory } from "@/pages/DropsHistory";
+import { MyDropTrees } from "./pages/MyDroptrees";
 function Layout() {
   return (
     <>
@@ -26,9 +27,13 @@ const router = createBrowserRouter([
         element: <CreateDropTree />,
       },
       {
-        path: "history",
+        path: "claim-history",
         element: <MyHistory />,
       },
+      {
+        path: "droptree-history",
+        element: <MyDropTrees/>
+      }
     ],
   },
 ]);
