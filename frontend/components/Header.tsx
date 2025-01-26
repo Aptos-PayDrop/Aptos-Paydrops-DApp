@@ -18,9 +18,6 @@ export function Header({title}: {title: string}) {
           <Link className={buttonVariants({ variant: "link" })} to={"/"}>
             <Text >Claim Paydrops</Text>
         </Link>
-            <Link className={buttonVariants({ variant: "link" })} to={"/history"}>
-              History
-            </Link>
             <Link className={buttonVariants({ variant: "link" })} to={"/create-droptree"}>
               Fund Paydrops
             </Link>
