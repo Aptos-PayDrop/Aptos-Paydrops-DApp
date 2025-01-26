@@ -17,3 +17,22 @@ export const UploadSpinner: FC<{ on: boolean }> = ({ on }) => {
     </div>
   );
 };
+
+
+export const PayDropsSpinner: FC<{ on: boolean }> = ({ on }) => {
+  return (
+    <div
+      className={cn(
+        "top-0 left-0 fixed w-full h-full bg-blue-500 bg-opacity-30 flex  items-center flex-col transition-all",
+        on ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none",
+      )}
+    >
+      {/* <p className="display">Processing...</p>
+      <Spinner size="lg" /> */}
+      <div style={{overflow: "hidden"}}>
+      <div className="drop"></div>
+      <div className="wave"></div>
+      </div>
+    </div>
+  );
+};
