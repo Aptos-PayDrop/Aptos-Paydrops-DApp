@@ -8,12 +8,14 @@ type DropTreeDetailsArg = {
 }
 
 export const DropTreeDetails = async ({sponsor,root}: DropTreeDetailsArg) =>{
-const result = await aptosClient().view<[string,string,string,string,Object,boolean]>({
+const result = await aptosClient().view<[string,string,string,string,Object,boolean,string]>({
     payload: {
         function: `${AccountAddress.from(MODULE_ADDRESS)}::paydrop::droptree_details`,
         functionArguments: [sponsor, new U256(root)]
     }
 })
+
+  //TODO: fetch the asset using the metadata object, then get the decimals and encode the deposit_left using convertAmountFromOnChainToHumanReadable
 
    return {
     total_deposit:result[0],
@@ -21,6 +23,7 @@ const result = await aptosClient().view<[string,string,string,string,Object,bool
     total_leaves: result[2],
     unused_leaves: result[3],
     fa_metadata_object: result[4],
-    enabled: result[5]
+    enabled: result[5],
+    url: result[6]
    }
 }
