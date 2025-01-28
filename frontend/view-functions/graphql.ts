@@ -18,7 +18,7 @@ export async function query_fungible_asset_metadata(network: Network, address: s
     const query = `
       query GetFungibleAssetInfo($addr: String) {
         fungible_asset_metadata(
-           where: {creator_address: {_eq: \"${address}\"}}
+           where: {asset_type: {_eq: \"${address}\"}}
         ) {
            name
            decimals
