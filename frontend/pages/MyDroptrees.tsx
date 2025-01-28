@@ -4,49 +4,105 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 // Internal hooks
 import { IS_PROD, NETWORK } from "@/constants";
 import { Header } from "@/components/Header";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useEffect, useState } from "react";
+import { fetchTreeBySponsor } from "@/utils/Irys";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { PayDropsSpinner } from "@/components/UploadSpinner";
+import { CopyIcon } from "@/components/icons/copy";
 
-//TODO: Action should be : Created Droptree, Refunded Droptree, Claimed Drop
-
-const mockFas = {
-  asset_type: "something",
-  name: "name",
-
-}
 
 export function MyDropTrees() {
-  // const fas = useGetAssetMetadata();
-  const fas = [mockFas, mockFas, mockFas];
-  // If we are on Production mode, redierct to the public mint page
   const navigate = useNavigate();
-  if (IS_PROD) navigate("/", { replace: true });
+
+  const { account, wallet } = useWallet();
+
+  const { toast } = useToast();
+
+  const toast_default = (title: string, description: string) => {
+    toast({
+      variant: "default",
+      title,
+      description
+    })
+  }
 
 
-  //TODO: Use the aptos Indexer to fetch the events for this account address
-  //If the address is not connected who an error
+  const [droptrees, setDroptrees] = useState<Array<any>>([]);
 
-  //Render the fetched events into the table
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+
+  const getTotalPages = (_droptrees: Array<any>) => {
+    const size = _droptrees.length;
+
+    // TODO: make sure there are 8 on a single page and then show pagination arrows
+    //TODO: calculate the max pages size
+    //TODO: copy the pagination logic from another project
+
+  }
+
+  useEffect(() => {
+
+    if (!account) {
+      navigate("/create-droptree")
+    }
+
+    const fetchData = async () => {
+      if (account) {
+        const address = account.address;
+        const results = await fetchTreeBySponsor(address);
+        if (results.found) {
+          setDroptrees(results.data);
+
+        } else {
+          toast_default("Not found", "No history found for the connected address")
+        }
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 3000)
+      }
+    }
+
+    fetchData();
+
+
+  }, [account])
+
+
+  if (!account) {
+    return <div></div>
+  }
 
   return (
     <>
-      <Header title="History" />
+      <Header title="Upload History" />
+      <PayDropsSpinner on={isLoading} />
       <Table className="max-w-screen-xl mx-auto">
-        {<TableCaption>A list of the fungible assets created under the current contract.</TableCaption>}
+        {<TableCaption>The list of paydrops created by the connected address</TableCaption>}
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Action</TableHead>
-            <TableHead>Asset Name</TableHead>
+            <TableHead className="w-[100px]">Identifier(Root)</TableHead>
+            <TableHead>Timestamp</TableHead>
             <TableHead>Amount</TableHead>
+            <TableHead>Recipients</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {fas.length > 0 &&
-            fas.map((fa) => {
+          {droptrees.length > 0 &&
+            droptrees.map((tree) => {
+              const date = new Date(tree.timestamp).toLocaleString();
               return (
-                <TableRow key={fa.asset_type}>
-                  <TableCell>{fa.name}</TableCell>
-                  <TableCell>cell</TableCell>
-                  <TableCell>cell</TableCell>
-                  <TableCell>12</TableCell>
+                <TableRow key={`${tree.timestamp}-${tree.root}`}>
+                  <TableCell><ShortenRoot notifyClicker={() => toast_default("Copy", `${tree.root.substring(0, 20)}.... copied to clipboard`)} root={tree.root}></ShortenRoot></TableCell>
+                  <TableCell>{date}</TableCell>
+                  <TableCell>{tree.totalDeposit}{" "}{tree.fungibleAssetName}</TableCell>
+                  <TableCell>{tree.leaves}</TableCell>
+                  <TableCell><Button>View</Button></TableCell>
                 </TableRow>
               );
             })}
@@ -55,3 +111,13 @@ export function MyDropTrees() {
     </>
   );
 }
+
+function ShortenRoot(props: { root: string, notifyClicker: CallableFunction }) {
+  return <div>
+    {props.root.substring(0, 5)}...{props.root.substring(props.root.length - 5, props.root.length)} <Button style={{ cursor: "pointer" }} onClick={() => {
+      navigator.clipboard.writeText(props.root);
+      props.notifyClicker()
+    }} size={"icon"} variant={"icon"}><CopyIcon width={20} height={20} /></Button>
+  </div>
+}
+
