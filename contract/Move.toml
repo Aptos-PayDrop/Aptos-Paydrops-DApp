@@ -4,9 +4,8 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-fee_manager_address="0x1"
-paydrop_addr="0x1"
-
+fee_manager_address="0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0"
+# paydrop_addr="0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0"
 
 
 [dependencies]
