@@ -14,8 +14,8 @@ async function random_addresses(size){
 }
 
 async function main() {
-    const addresses = await random_addresses(20000);
-    let amountToUse = 10;
+    const addresses = await random_addresses(2);
+    let amountToUse = 1;
 
     let csv  = "";
 
@@ -23,7 +23,7 @@ async function main() {
         csv += `${addresses[i]},${amountToUse}\n`
     }
 
-   fs.writeFileSync(path.join(process.cwd(),"example_large.csv"),csv)
+   fs.writeFileSync(path.join(process.cwd(),"example_tow.csv"),csv)
 }
 
 
