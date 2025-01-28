@@ -149,5 +149,113 @@ export async function fetchMerkleTree(id: string) {
   const json = await fetchedData.json();
 
   return json
+}
 
+export async function fetchTreeBySponsor(sponsor: string) {
+  const graphqlURL = NETWORK === "testnet" ? "https://devnet.irys.xyz/graphql" : "https://uploader.irys.xyz/graphql";
+
+  const query = `
+  query getPaydrops($sponsor: String!) {
+	transactions(tags: [
+		{ name: "App", values: ["Aptos-Paydrop"] },
+		{name: "Sponsor", values: [$sponsor]}
+		
+		]) {
+		edges {
+			node {
+        timestamp
+				id
+				address
+        tags{
+          name
+          value
+        }
+			}
+		}
+	}
+}
+  `
+
+  const variables = {
+    sponsor
+  }
+
+  const res = await fetch(graphqlURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ query, variables })
+  })
+
+  const json = await res.json();
+
+  const foundIt = json?.data?.transactions?.edges?.length !== 0;
+  if (!foundIt) {
+    return {
+      found: false,
+      error: "not found",
+      data: []
+    }
+  }
+
+  const edges = json.data.transactions.edges;
+
+  let results = [];
+
+  let existsAlready = new Map();
+
+  for (let i = 0; i < edges.length; i++) {
+    const tags = edges[i].node.tags;
+    //Gonna get the root to access the droptree_details function later
+    let root = ""
+    //Getting the decimals now lets me avoid a call later
+    let decimals = 0;
+    let totalDeposit = 0;
+    let fungibleAssetName = "name not found";
+    let leaves = 0;
+    for (let j = 0; j < tags.length; j++) {
+      if (tags[j].name === "Root") {
+        root = tags[j].value;
+      }
+      if (tags[j].name === "Decimals") {
+        decimals = parseInt(tags[j].value);
+      }
+
+      if (tags[j].name === "Total-Deposit") {
+        totalDeposit = tags[j].value;
+      }
+
+      if (tags[j].name === "Fungible-Asset-Name") {
+        fungibleAssetName = tags[j].value;
+      }
+
+      if (tags[j].name === "Leaves") {
+        leaves = tags[j].value;
+      }
+    }
+
+    //Filter duplicates
+    if (existsAlready.get(root)) {
+      continue;
+    }
+
+    results[i] = {
+      timestamp: edges[i].node.timestamp,
+      root,
+      decimals,
+      id: edges[i].node.id,
+      totalDeposit,
+      fungibleAssetName,
+      leaves
+    }
+    existsAlready.set(root, true);
+  }
+
+
+  return {
+    data: results.sort((a, b) => b.timestamp - a.timestamp),
+    error: "",
+    found: true
+  }
 }
