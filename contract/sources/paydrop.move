@@ -342,7 +342,7 @@ module paydrop_addr::paydrop {
     public entry fun new_droptree(
         sender: &signer, //the sponsor will deposit into the droptree
         root: u256, //the root is the merkle root of the tree
-        fa_address: address, //The address of the fungible asset selected
+        fa_metadata: Object<Metadata>, //The address of the fungible asset selected 
         total_deposit: u64, //The deposit of fungible asset
         total_leaves: u64, // the leaves deposited,
         enabled: bool, // Withdrawals are enabled,
@@ -352,7 +352,7 @@ module paydrop_addr::paydrop {
         new_droptree_internal(
             sender,
             root,
-            object::address_to_object<Metadata>(fa_address),
+            fa_metadata,
             total_deposit,
             total_leaves,
             enabled,
@@ -913,8 +913,6 @@ module paydrop_addr::paydrop {
         eq(&left, &right)
     }
 
-    #[test_only]
-    use std::debug;
 
     //Assert that a 31 byte hash is derived from the 32 byte sender_address
     #[test(fx = @0xd9f6c8ff9cd1d58a271fcc081a83c740295de07ef39ef6f5648804a750344614)]
