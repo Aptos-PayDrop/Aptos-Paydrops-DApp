@@ -16,7 +16,7 @@ import { ConfirmButton } from "@/components/ui/confirm-button";
 import { checkIfFund, uploadFile } from "@/utils/Irys";
 import { aptosClient } from "@/utils/aptosClient";
 // Internal constants
-import { IS_PROD } from "@/constants";
+import { IS_PROD, NETWORK } from "@/constants";
 // Entry functions
 import { Header } from "@/components/Header";
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
@@ -128,8 +128,7 @@ export function CreateDropTree() {
       setFa_metadata(FA_METADATA_DEFAULT)
       return;
     }
-
-    const network = process.env.VITE_APP_NETWORK === "testnet" ? Network.TESTNET : Network.MAINNET;
+    const network = NETWORK === "testnet" ? Network.TESTNET : Network.MAINNET;
 
     const data = await query_fungible_asset_metadata(network, fa_address).catch((err) => {
       toast_error("Unable to fetch Fungible Asset Metadata");
@@ -213,12 +212,13 @@ export function CreateDropTree() {
       console.log("reading file")
       if (e.target?.result) {
 
+
         const [data, errors] = parseTextToCSV(
           e.target.result as string);
 
         if (errors.length !== 0) {
-          toast_error("Unable to parse CSV")
-          return;
+          console.log(errors)
+          // toast_error("Errors detected in the file ")
         }
 
         setTotalEntries(data.length === 0 ? 0 : data.length - 1);
@@ -280,6 +280,7 @@ export function CreateDropTree() {
         { name: "Sponsor", value: account.address },
         { name: "Leaves", value: `${merkleTreeData.leaves.length}` },
         { name: "Fungible-Asset-Address", value: fa_address },
+        { name: "Fungible-Asset-Name", value: fa_metadata.name },
         { name: "Total-Deposit", value: amountToDeposit.toString() },
         { name: "Decimals", value: fa_metadata.decimals.toString() }
       ]
@@ -289,7 +290,7 @@ export function CreateDropTree() {
       const inputTransaction = newDroptree({
         root: merkleTreeData.root as bigint,
         fa_address: merkleTreeData.fungible_asset_address,
-        total_deposit: convertAmountFromHumanReadableToOnChain(amountToDeposit, fa_metadata.decimals),
+        total_deposit: amountToDeposit,
         total_deposit_decimals: fa_metadata.decimals,
         total_leaves: merkleTreeData.leaves.length,
         enabled: claimEnabled,
@@ -344,7 +345,7 @@ export function CreateDropTree() {
 
             <CardHeader>
               <CardTitle className="flex flex-row justify-between">
-                Payment Details<Link className={buttonVariants({ variant: "outline" })} to="/droptree-history">Go to History</Link>
+                Payment Details {account ? <Link className={buttonVariants({ variant: "outline" })} to="/droptree-history">Go to History</Link> : null}
               </CardTitle>
               <LabeledInput
                 value={fa_address}
