@@ -8,9 +8,12 @@ export function Header({title}: {title: string}) {
 
   return (
     <div className="flex items-center justify-between px-4 py-2 max-w-screen-xl mx-auto w-full flex-wrap">
+      <div className="flex justify-start">
+      <img  width="40" style={{scale: "0.8", marginTop: "-5px"}} src="./logo.webp"/>
       <h1 className="display">
-        <Link to="/">{title}</Link>
+        <Link className="mx-auto" style={{top: "50%"}} to="/">{title}</Link>
       </h1>
+      </div>
 
       <div className="flex gap-2 items-center flex-wrap">
         {IS_DEV && (
