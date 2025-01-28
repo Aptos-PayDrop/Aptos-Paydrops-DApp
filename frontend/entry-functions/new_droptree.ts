@@ -17,7 +17,6 @@ type NewDropTreeArgs = {
   url: string
 }
 
-//TODO: make sure total_deposit is not overflowing the max number
 
 export const newDroptree = (args: NewDropTreeArgs): InputTransactionData => {
   return {
