@@ -1,5 +1,5 @@
 import { isAptosConnectWallet, useWallet } from "@aptos-labs/wallet-adapter-react";
-import { AccountAddress, convertAmountFromHumanReadableToOnChain, Network } from "@aptos-labs/ts-sdk";
+import { AccountAddress, Network } from "@aptos-labs/ts-sdk";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WarningAlert } from "@/components/ui/warning-alert";
-import { PayDropsSpinner, UploadSpinner } from "@/components/UploadSpinner";
+import { PayDropsSpinner } from "@/components/UploadSpinner";
 import { LabeledInput } from "@/components/ui/labeled-input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 // Internal utils
