@@ -1,1 +1,6 @@
-Published using aptos move publish with public key 0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0
+Aptos Paydrops
+
+A scaling solution for Mass Payments using Fungible Assets on Aptos
+Designed for: AirDrops, Quadratic Funding, Payrolls and Mass Payouts
+
+Published under object 0x629a9a226a53badad0e3a18bb81408c1b2bf5072363dfef603d8af559f2755e3
