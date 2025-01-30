@@ -15,7 +15,6 @@ const result = await aptosClient().view<[string,string,string,string,Object,bool
     }
 })
 
-  //TODO: fetch the asset using the metadata object, then get the decimals and encode the deposit_left using convertAmountFromOnChainToHumanReadable
 
    return {
     total_deposit:result[0],
