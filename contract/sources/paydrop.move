@@ -256,7 +256,7 @@ module paydrop_addr::paydrop {
     //The naming convention is copied from the example for groth-16 verifier
     public entry fun initialize_vkey(sender: &signer, vkey: vector<u256>) {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
         let vk_alpha_x = *vector::borrow(&vkey, 0);
         let vk_alpha_y = *vector::borrow(&vkey, 1);
 
@@ -322,7 +322,7 @@ module paydrop_addr::paydrop {
         sender: &signer, new_fee_manager: address
     ) acquires Config {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
         let config = borrow_global_mut<Config>(sender_addr);
         config.fee_manager_address = new_fee_manager;
     }
@@ -330,7 +330,7 @@ module paydrop_addr::paydrop {
     // The creator can set the fees that are sent to the fee manager
     public entry fun set_fee(sender: &signer, new_fee: u64) acquires Config {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
+        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
         //Max fee limit is 25%
         assert!(new_fee < 25, ERR_EXCEEDS_MAX_FEE);
         let config = borrow_global_mut<Config>(sender_addr);
@@ -627,6 +627,22 @@ module paydrop_addr::paydrop {
         //Returns if the nullifiers contains the recipient address
         table::contains(&selected_tree.nullifiers, recipient)
     }
+
+    #[view]
+    //Returns is_nullified in bulk so I dont't have to call that funciton many times
+    public fun is_nullified_bulk(sponsor: address, root: u256, checkedAddresses: vector<address>): vector<bool> acquires Forest {
+        let selected_tree = tree_selector(sponsor,root);
+        
+        let results = vector::empty();
+        let addressesLength = vector::length(&checkedAddresses);
+        for(iter in 0..addressesLength){
+            let contains = table::contains(&selected_tree.nullifiers,*vector::borrow(&checkedAddresses, iter));
+            vector::push_back(&mut results,contains)
+        };
+       results
+    }
+
+
 
     #[view]
     public fun calculate_fees(amount: u64): (u64, u64) acquires Config {
