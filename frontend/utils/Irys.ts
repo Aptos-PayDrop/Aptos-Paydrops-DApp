@@ -87,6 +87,10 @@ export async function fetchTreeByRoot(root: string,): Promise<{
 			node {
 				id
 				address
+        tags{
+          name
+          value
+        }
 			}
 		}
 	}
@@ -121,12 +125,14 @@ export async function fetchTreeByRoot(root: string,): Promise<{
     const address = edge.node.address;
     const id = edge.node.id;
 
+    const tags = edge.node.tags;
+
 
     return {
       found: true,
       error: "",
       data: {
-        address, id
+        address, id, tags
       }
     }
   } catch (err: any) {
@@ -212,7 +218,7 @@ export async function fetchTreeBySponsor(sponsor: string) {
     //Getting the decimals now lets me avoid a call later
     let decimals = 0;
     let totalDeposit = 0;
-    let fungibleAssetName = "name not found";
+    let fungibleAssetName = "";
     let leaves = 0;
     for (let j = 0; j < tags.length; j++) {
       if (tags[j].name === "Root") {
