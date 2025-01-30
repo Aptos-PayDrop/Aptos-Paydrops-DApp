@@ -14,3 +14,13 @@ export const WarningAlert: FC<{
     </Alert>
   );
 };
+
+export const ActionAlert: FC<{ title: string, children?: ReactNode }> = ({ title, children }) => {
+  return (
+    <Alert variant="default">
+      <AlertOctagon className="w-4 h-5" />
+      <AlertTitle className="body-md-semibold">{title}</AlertTitle>
+      <AlertDescription className="body-sm">{children}</AlertDescription>
+    </Alert>
+  );
+}
