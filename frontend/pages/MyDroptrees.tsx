@@ -2,21 +2,22 @@ import { Link, useNavigate } from "react-router-dom";
 // Internal components
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 // Internal hooks
-import { IS_PROD, NETWORK } from "@/constants";
 import { Header } from "@/components/Header";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { fetchTreeBySponsor } from "@/utils/Irys";
 import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PayDropsSpinner } from "@/components/UploadSpinner";
 import { CopyIcon } from "@/components/icons/copy";
+import { PaginationButtons } from "@/components/PaginationButtonts";
 
+const PAGESIZE = 5;
 
 export function MyDropTrees() {
   const navigate = useNavigate();
 
-  const { account, wallet } = useWallet();
+  const { account } = useWallet();
 
   const { toast } = useToast();
 
@@ -29,20 +30,24 @@ export function MyDropTrees() {
   }
 
 
-  const [droptrees, setDroptrees] = useState<Array<any>>([]);
-
-  const [currentPage, setCurrentPage] = useState(0);
+  const [droptreePages, setDroptreePages] = useState<Array<any>>([]);
 
   const [isLoading, setIsLoading] = useState(true);
 
+  const [pageData, setPageData] = useState({
+    currentPage: 0,
+    totalPages: 1
+  });
 
-  const getTotalPages = (_droptrees: Array<any>) => {
-    const size = _droptrees.length;
-
-    // TODO: make sure there are 8 on a single page and then show pagination arrows
-    //TODO: calculate the max pages size
-    //TODO: copy the pagination logic from another project
-
+  function splitDataPerPages(data: Array<any>, pageSize: number) {
+    const res = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i % pageSize === 0) {
+        res.push(new Array());
+      }
+      res[res.length - 1].push(data[i]);
+    };
+    return res;
   }
 
   useEffect(() => {
@@ -56,7 +61,12 @@ export function MyDropTrees() {
         const address = account.address;
         const results = await fetchTreeBySponsor(address);
         if (results.found) {
-          setDroptrees(results.data);
+          const pagedData = splitDataPerPages(results.data, PAGESIZE)
+          setDroptreePages(pagedData);
+          setPageData({
+            currentPage: 0,
+            totalPages: pagedData.length
+          });
 
         } else {
           toast_default("Not found", "No history found for the connected address")
@@ -72,6 +82,20 @@ export function MyDropTrees() {
 
   }, [account])
 
+  const previousClicked = async () => {
+    if (pageData.currentPage !== 0) {
+      const newPage = pageData.currentPage - 1;
+      setPageData({ ...pageData, currentPage: newPage })
+    }
+  }
+
+  const nextClicked = async () => {
+    if (pageData.currentPage !== pageData.totalPages - 1) {
+      const newPage = pageData.currentPage + 1;
+      setPageData({ ...pageData, currentPage: newPage })
+    }
+  }
+
 
   if (!account) {
     return <div></div>
@@ -82,27 +106,42 @@ export function MyDropTrees() {
       <Header title="Upload History" />
       <PayDropsSpinner on={isLoading} />
       <Table className="max-w-screen-xl mx-auto">
-        {<TableCaption>The list of paydrops created by the connected address</TableCaption>}
+        <TableCaption>
+          <PaginationButtons
+            previousClicked={previousClicked}
+            nextClicked={nextClicked}
+            nextDisabled={pageData.currentPage === pageData.totalPages - 1}
+            previousDisabled={pageData.currentPage === 0}
+            currentPage={pageData.currentPage}
+            totalPages={pageData.totalPages}></PaginationButtons>
+          <p>The list of paydrops uploaded by the connected address</p>
+
+        </TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Identifier(Root)</TableHead>
-            <TableHead>Timestamp</TableHead>
+            <TableHead className="w-[200px]">Timestamp</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Recipients</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {droptrees.length > 0 &&
-            droptrees.map((tree) => {
-              const date = new Date(tree.timestamp).toLocaleString();
+          {droptreePages[pageData.currentPage]?.length > 0 &&
+            droptreePages[pageData.currentPage].map((tree: any) => {
+              const date = new Date(tree?.timestamp).toLocaleString();
+
+              if (!tree) {
+                return null
+              }
+
               return (
                 <TableRow key={`${tree.timestamp}-${tree.root}`}>
                   <TableCell><ShortenRoot notifyClicker={() => toast_default("Copy", `${tree.root.substring(0, 20)}.... copied to clipboard`)} root={tree.root}></ShortenRoot></TableCell>
                   <TableCell>{date}</TableCell>
                   <TableCell>{tree.totalDeposit}{" "}{tree.fungibleAssetName}</TableCell>
                   <TableCell>{tree.leaves}</TableCell>
-                  <TableCell><Button>View</Button></TableCell>
+                  <TableCell><Link to={`/droptree/${tree.root}`} className={buttonVariants({ variant: "outline" })}>View</Link></TableCell>
                 </TableRow>
               );
             })}
