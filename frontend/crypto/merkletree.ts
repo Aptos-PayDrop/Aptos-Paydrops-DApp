@@ -47,7 +47,7 @@ export async function generateMerkleRoot(leaves: Array<bigint>, tree: any, onPro
     ensureEven(leaves);
     const combinedHashes = [];
     for (let i = 0; i < leaves.length; i += 2) {
-      
+
 
         const newHash = await hashLeaves(leaves[i], leaves[i + 1])
         combinedHashes.push(newHash)
@@ -256,5 +256,20 @@ export function serializeMerkleTree(tree: MerkleTree) {
 // }
 
 
+export function convertStringTreeLayersToBigint(layers: string[][]): MerkleTree {
+    let levels = [];
 
+    for (let i = 0; i < layers.length; i++) {
+        let currentLevel = [];
+        for (let j = 0; j < layers[i].length; j++) {
+            currentLevel[j] = BigInt(layers[i][j]);
+
+        }
+        levels[i] = currentLevel;
+    }
+
+    return {
+        layers: levels
+    }
+}
 
