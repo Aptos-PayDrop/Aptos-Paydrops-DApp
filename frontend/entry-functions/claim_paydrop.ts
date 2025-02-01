@@ -16,8 +16,6 @@ type ClaimDropTreeArgs = {
     proof: Array<bigint>
 }
 
-//TODO: make sure amount is not overflowing the max number
-
 export const claimDroptree = (args: ClaimDropTreeArgs): InputTransactionData => {
     return {
         data: {
