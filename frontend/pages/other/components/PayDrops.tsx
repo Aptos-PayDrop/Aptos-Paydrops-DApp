@@ -6,7 +6,7 @@ import { getIsNullifiedBulk } from "@/view-functions/getIsNullified";
 import { useEffect, useState } from "react";
 
 const PAGESIZE = 10;
-export function PayDropsTable(props: { droptree: any, nullifiedAddresses: string[] }) {
+export function PayDropsTable(props: { droptree: any }) {
   const { creatorAddress, addresses, amounts, decimals, fungible_asset_address, leaves, nonce, root, tree } = props.droptree;
 
   const { toast } = useToast();
@@ -35,22 +35,24 @@ export function PayDropsTable(props: { droptree: any, nullifiedAddresses: string
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const paginated_Addresses = splitDataPerPages(addresses, PAGESIZE);
-    const paginated_Amounts = splitDataPerPages(amounts, PAGESIZE);
-    setPaginatedData({ addresses: paginated_Addresses, amounts: paginated_Amounts });
-    setPageData({ ...pageData, totalPages: paginated_Addresses.length })
+    if (addresses) {
+      const paginated_Addresses = splitDataPerPages(addresses, PAGESIZE);
+      const paginated_Amounts = splitDataPerPages(amounts, PAGESIZE);
+      setPaginatedData({ addresses: paginated_Addresses, amounts: paginated_Amounts });
+      setPageData({ ...pageData, totalPages: paginated_Addresses.length })
+    }
   }, [props.droptree])
 
-  //TODO: get nullified bulk 
 
   useEffect(() => {
 
     const fetchNullified = async () => {
       const currentAddresses = paginatedData.addresses[pageData.currentPage];
+      if (currentAddresses) {
+        const areNullified = await getIsNullifiedBulk({ sponsor: creatorAddress, root: root, checkedAddresses: currentAddresses })
 
-      const areNullified = await getIsNullifiedBulk({ sponsor: creatorAddress, root: root, checkedAddresses: currentAddresses })
-
-      setCurrentPageNullified(areNullified);
+        setCurrentPageNullified(areNullified);
+      }
     }
 
     fetchNullified();
