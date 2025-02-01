@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { buildPoseidon } from "circomlibjs";
 import { groth16 } from "snarkjs";
 import Blake2b from "blake2b-wasm";
+import { IS_CIRCUIT_FINALIZED } from "@/constants";
 
 
 //Returns false if wasm is not supported by the browser
@@ -88,6 +89,25 @@ export async function hashLeaves(left: bigint, right: bigint) {
     return await poseidon([BigInt(left), BigInt(right)]);
 }
 
+export function getSnarkArtifactsBrowserPath() {
+    return {
+        wasmFilePath: window.location.toString() + "circuit.wasm",
+        zkeyFilePath: window.location.toString() + IS_CIRCUIT_FINALIZED ? "circuit_final.zkey" : "circuit_0000.zkey"
+    }
+}
+
+export function convertProofToVector(proof: any): bigint[] {
+    return [
+        BigInt(proof.pi_a[0]),
+        BigInt(proof.pi_a[1]),
+        BigInt(proof.pi_b[0][0]),
+        BigInt(proof.pi_b[0][1]),
+        BigInt(proof.pi_b[1][0]),
+        BigInt(proof.pi_b[1][1]),
+        BigInt(proof.pi_c[0]),
+        BigInt(proof.pi_c[1]),
+    ]
+}
 
 /**
  * @param {Object} options - The arguments for the compute proof
@@ -103,7 +123,7 @@ export async function hashLeaves(left: bigint, right: bigint) {
  */
 export async function computeProof({ pathElements, pathIndices, publicInputs, snarkArtifacts }: {
     pathElements: Array<bigint> | Array<string>,
-    pathIndices: Array<bigint> | Array<string>,
+    pathIndices: Array<number>,
     publicInputs: Object,
     snarkArtifacts: {
         wasmFilePath: string,
