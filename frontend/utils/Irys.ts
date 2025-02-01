@@ -144,8 +144,13 @@ export async function fetchTreeByRoot(root: string,): Promise<{
   }
 }
 
-export async function fetchMerkleTree(id: string) {
+export function getIrysURLFromId(id: string) {
   const dataURL = NETWORK === "testnet" ? `https://devnet.irys.xyz/${id}` : `https://uploader.irys.xyz/${id}`;
+  return dataURL;
+}
+
+export async function fetchMerkleTree(id: string) {
+  const dataURL = getIrysURLFromId(id);
 
   const fetchedData = await fetch(dataURL, {
     method: "GET"
