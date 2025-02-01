@@ -27,7 +27,7 @@ import { query_fungible_asset_metadata } from "@/view-functions/graphql";
 import { Progress as ProgressIndicator } from "@/components/ui/progress";
 import { newDroptree } from "@/entry-functions/new_droptree";
 import { Checkbox } from "@/components/ui/checkbox";
-
+import Decimal from "decimal.js";
 
 type MerkleTreeData = {
   addresses: string[],
@@ -141,7 +141,7 @@ export function CreateDropTree() {
   }
 
   async function verifyingCSV(parsedCSV: Array<Array<string>>) {
-    let amountSum = 0;
+    let amountSum = new Decimal(0);
     for (let i = 0; i < parsedCSV.length - 1; i++) {
       let row = parsedCSV[i];
       //SO now Here I start validating and computing the commitments!
@@ -161,9 +161,12 @@ export function CreateDropTree() {
       }
 
       setVerifiedEntries(i + 1);
-      amountSum += parseFloat(amount);
+
+      //Summing floats could have javascript errors, so I use decimal.js
+      amountSum = amountSum.add(new Decimal(amount));
     }
-    setAmountToDeposit(amountSum);
+
+    setAmountToDeposit(amountSum.toNumber());
   }
 
 
@@ -308,7 +311,7 @@ export function CreateDropTree() {
 
       //Go to history and it should show you crating an new droptree
       if (committedTransactionResponse.success) {
-        navigate(`/history`, { replace: true });
+        navigate(`/droptree/${merkleTreeData.root}`, { replace: true });
       }
 
     } catch (err: any) {
