@@ -14,7 +14,8 @@ export function DetailsCard(props: {
     unusedLeaves: string,
     assetExplorerLink: string,
     existsOnChain: boolean,
-    amountToDepositIfNotExists: string
+    amountToDepositIfNotExists: string,
+    onEnableClicked: () => void,
 }) {
     return <Card>
         <CardHeader>
@@ -29,10 +30,11 @@ export function DetailsCard(props: {
                         <TableCell>Creator:</TableCell>
                         <TableCell>{props.creatorAddress}</TableCell>
                     </TableRow>
-                    {props.showEnable && props.existsOnChain ? <TableRow>
+                    {props.showEnable && props.existsOnChain && props.amountLeft > 0 ? <TableRow>
                         <TableCell>Withdrawals are disabled</TableCell>
-                        <TableCell><Button>Enable</Button></TableCell>
+                        <TableCell><Button onClick={props.onEnableClicked}>Enable</Button></TableCell>
                     </TableRow> : null}
+
 
                     <TableRow>
                         <TableCell>Root:</TableCell>
@@ -48,6 +50,12 @@ export function DetailsCard(props: {
                         <TableCell>Amount to deposit:</TableCell>
                         <TableCell>{props.amountToDepositIfNotExists}</TableCell>
                     </TableRow> : null}
+
+                    {props.showEnable && props.existsOnChain && props.amountLeft === 0 ? <TableRow>
+                        <TableCell>Status:</TableCell>
+                        <TableCell>REFUNDED</TableCell>
+                    </TableRow> : null}
+
                 </TableBody>
             </Table>
         </CardContent>
