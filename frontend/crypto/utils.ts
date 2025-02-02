@@ -90,9 +90,11 @@ export async function hashLeaves(left: bigint, right: bigint) {
 }
 
 export function getSnarkArtifactsBrowserPath() {
+    const zkeyPath = IS_CIRCUIT_FINALIZED ? "/circuit_final.zkey" : "/circuit_0000.zkey"
+
     return {
-        wasmFilePath: window.location.toString() + "circuit.wasm",
-        zkeyFilePath: window.location.toString() + IS_CIRCUIT_FINALIZED ? "circuit_final.zkey" : "circuit_0000.zkey"
+        wasmFilePath: window.location.origin.toString() + "/circuit.wasm",
+        zkeyFilePath: window.location.origin.toString() + zkeyPath
     }
 }
 
