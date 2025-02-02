@@ -285,7 +285,6 @@ module paydrop_addr::paydrop {
         let vk_gamma_abc_4_y = *vector::borrow(&vkey, 21);
         let vk_gamma_abc_5_x = *vector::borrow(&vkey, 22);
         let vk_gamma_abc_5_y = *vector::borrow(&vkey, 23);
-        
         move_to(
             sender,
             VerificationKey {
@@ -780,7 +779,8 @@ module paydrop_addr::paydrop {
         (
         Element<G1>, Element<G2>, Element<G2>, Element<G2>, vector<Element<G1>>
     ) acquires VerificationKey {
-        let raw_vkey = borrow_global<VerificationKey>(@paydrop_addr);
+        
+        let raw_vkey = borrow_global<VerificationKey>(@fee_manager_address);
 
         //Deserialize into bytes
 
