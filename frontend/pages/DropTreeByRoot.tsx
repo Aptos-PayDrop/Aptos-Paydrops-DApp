@@ -9,8 +9,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom"
 import { DetailsCard } from "./other/components/DetailsCard";
 import { PayDropsTable } from "./other/components/PayDrops";
-import { IS_PROD, NETWORK } from "@/constants";
-import { Account, AccountAddress, Network } from "@aptos-labs/ts-sdk";
+import { NETWORK } from "@/constants";
+import { AccountAddress, Network } from "@aptos-labs/ts-sdk";
 import { DropTreeDetails } from "@/view-functions/getDroptreeDetails";
 import { Button } from "@/components/ui/button";
 import { getIsNullified } from "@/view-functions/getIsNullified";
@@ -21,7 +21,7 @@ import { aptosClient } from "@/utils/aptosClient";
 import { enablePaydrop } from "@/entry-functions/enable_paydrop";
 import { claimDroptree } from "@/entry-functions/claim_paydrop";
 import { convertStringTreeLayersToBigint, encodeForCircuit, generateMerkleProof, getMerkleRootFromMerkleProof } from "@/crypto/merkletree";
-import { computeProof, convertProofToVector, generateCommitmentHash, getSnarkArtifactsBrowserPath, hashAddressForSnark } from "@/crypto/utils";
+import { buildHashImplementation, computeProof, convertProofToVector, generateCommitmentHash, getSnarkArtifactsBrowserPath, hashAddressForSnark } from "@/crypto/utils";
 import { newDroptree } from "@/entry-functions/new_droptree";
 import Decimal from "decimal.js"
 
@@ -58,6 +58,7 @@ export function DropTreeByRoot() {
     const [isLoading, setIsLoading] = useState(false);
     const [amINullified, setAmINullified] = useState(true);
     const [treeContainsMyAddress, setTreeContainsMyAddress] = useState(false)
+    const [amountIcanClaim, setAmountIcanClaim] = useState(0);
     const [dropTreeDetails, setDroptreeDetails] = useState<any>({});
     const [fungibleAssetDetails, setFungibleAssetDetails] = useState<any>({});
     const [existsOnChain, setExistsOnChain] = useState(false);
@@ -115,7 +116,11 @@ export function DropTreeByRoot() {
                     toast_error("Failed to fetch merkle tree")
                 })
 
-                setTreeContainsMyAddress(containsMyAddress(account?.address ?? "", fetchedTree.addresses));
+                const { contains, index } = containsMyAddressAtIndex(account?.address ?? "", fetchedTree.addresses);
+
+                setTreeContainsMyAddress(contains);
+
+                setAmountIcanClaim(fetchedTree.amounts[index])
 
                 setTree({ ...fetchedTree, creatorAddress })
 
@@ -133,9 +138,11 @@ export function DropTreeByRoot() {
                 const dropTreeOnChainDetails = await DropTreeDetails({ sponsor: creatorAddress, root: BigInt(root) }).catch(err => {
                     toast_default("Not found", "Unable to fetch on-chain data. The deposit doesn't exist")
                 });
+
                 if (dropTreeOnChainDetails) {
                     setExistsOnChain(true);
                     setDroptreeDetails(dropTreeOnChainDetails);
+                    console.log()
                     const isNullified = await getIsNullified({ sponsor: creatorAddress, root: BigInt(root), recipient: account?.address });
                     setAmINullified(isNullified)
                 }
@@ -153,18 +160,23 @@ export function DropTreeByRoot() {
 
     useEffect(() => {
         fetchIrysGraphQlData()
-    }, [])
+    }, [account])
 
-
-    function containsMyAddress(myAddress: string, addresses: Array<string>) {
-        return addresses.includes(myAddress);
+    function containsMyAddressAtIndex(myAddress: string, addresses: Array<string>) {
+        for (let i = 0; i < addresses.length; i++) {
+            if (myAddress === addresses[i]) {
+                return { contains: true, index: i }
+            }
+        }
+        return {
+            contains: false,
+            index: 0
+        }
     }
 
 
     function getExplorerLinkForFA(address: string) {
-
-        const url = `https://explorer.aptoslabs.com/fungible_asset/${address}?network=${NETWORK}`
-        return url;
+        return `https://explorer.aptoslabs.com/fungible_asset/${address}?network=${NETWORK}`
     }
 
 
@@ -270,38 +282,40 @@ export function DropTreeByRoot() {
     async function onClaimClicked() {
         if (params.tree && account) {
             try {
+                await buildHashImplementation()
                 const address = account.address;
-                let amount = 0;
+                let amount = amountIcanClaim;
                 let commitment = 0n;
+
+                //Find the commitment in the list.. todo: this could be done earlier
                 for (let i = 0; i < droptree.addresses.length; i++) {
                     if (droptree.addresses[i] === address) {
-                        amount = droptree.amounts[i];
                         commitment = BigInt(droptree.leaves[i]);
                         break;
                     }
                 }
-                const nonce = BigInt(droptree.nonce);
 
+                const nonce = BigInt(droptree.nonce);
                 const bcsBytes = AccountAddress.from(address).bcsToBytes();
                 const hashedAddress = await hashAddressForSnark(bcsBytes);
 
-                const hashed_commitment = await generateCommitmentHash(hashedAddress, amount, nonce)
-
+                const onChainAmount = convertAmountFromHumanReadableToOnChain(amount, droptree.decimals)
+                const hashed_commitment = await generateCommitmentHash(hashedAddress, onChainAmount, nonce)
                 if (hashed_commitment !== commitment) {
-                    //An error occured, I didn't recover the correct commitment
                     console.error("Unable to recover commitment")
+                    toast_error("Error occured. Unable to recover commitment")
                     return
                 }
 
 
-                const convertedLayers = convertStringTreeLayersToBigint(droptree.tree.layers);
-
+                const convertedTree = convertStringTreeLayersToBigint(droptree.tree.layers);
                 const bigintLeaves = droptree.leaves.map((leaf: string) => BigInt(leaf));
 
-                const merkleProof = await generateMerkleProof(commitment, bigintLeaves, convertedLayers.layers)
+                const merkleProof = await generateMerkleProof(commitment, bigintLeaves, convertedTree)
 
                 if (!merkleProof) {
                     //ERR it returned null
+                    toast_error("Unable to create valid merkle proof")
                     return;
                 }
                 const merkleRoot = await getMerkleRootFromMerkleProof(merkleProof);
@@ -324,18 +338,17 @@ export function DropTreeByRoot() {
                         root: BigInt(droptree.root),
                         address: hashedAddress,
                         nonce,
-                        amount,
+                        amount: onChainAmount,
                     },
                     snarkArtifacts: {
                         wasmFilePath,
                         zkeyFilePath
                     }
                 })
-
                 const proof_vector = convertProofToVector(proof);
 
                 const inputTransaction = claimDroptree({
-                    sponsor: address,
+                    sponsor: dataInfo.creatorAddress,
                     root: BigInt(droptree.root),
                     amount: amount,
                     amount_decimals: droptree.decimals,
@@ -343,13 +356,20 @@ export function DropTreeByRoot() {
                     proof: proof_vector
                 });
 
-                const response = await signAndSubmitTransaction(inputTransaction);
+                const response = await signAndSubmitTransaction(inputTransaction).catch((err) => {
+                    toast_default("Interrupted", "Unable to sign and submit transaction");
+                    console.log(err)
+                });
+
+                if (!response) {
+                    return;
+                }
 
                 const committedTransactionResponse = await aptosClient().waitForTransaction({
                     transactionHash: response.hash
                 })
 
-                //Refresh the page on success
+                // //Refresh the page on success
                 if (committedTransactionResponse.success) {
                     window.location.reload()
                 }
@@ -400,8 +420,8 @@ export function DropTreeByRoot() {
                     onRefundClicked={onRefundClicked}
                 ></ShowRefundButton>
                 <ShowClaim
-                    fa_symbol="stx"
-                    claimAmount="10"
+                    fa_symbol={fungibleAssetDetails.symbol}
+                    claimAmount={amountIcanClaim}
                     addressCanClaim={treeContainsMyAddress}
                     addressNullified={amINullified}
                     treeEnabled={dropTreeDetails.enabled}
@@ -445,7 +465,7 @@ function ShowRefundButton(props: {
 
 
 function ShowClaim(props: {
-    claimAmount: string,
+    claimAmount: number,
     fa_symbol: string,
     addressCanClaim: boolean,
     addressNullified: boolean,
