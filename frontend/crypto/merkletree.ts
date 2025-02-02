@@ -80,12 +80,12 @@ export async function generateMerkleTree(leaves: Array<bigint>, onProgress: Call
  * Compute the merkle proof using a leaf and the leaves
  * @param {bigint} leaf - The leaf we compute proof for
  * @param {Array<bigint>} leaves - The leaf nodes of the merkle tree
- * @param {Array<Array<bigint>> | null} cachedTree - The cached merkle tree
+ * @param {any} cachedTree - The cached merkle tree
 
  * @returns {MerkleProof | null} - Returns the valid merkle proof or returns null if the leaves are empty
  */
 
-export async function generateMerkleProof(leaf: bigint, leaves: Array<bigint>, cachedTree: Array<Array<bigint>> | null) {
+export async function generateMerkleProof(leaf: bigint, leaves: Array<bigint>, cachedTree: any) {
     if (!leaf || !leaves || leaves.length === 0) {
         return null;
     }
@@ -256,7 +256,7 @@ export function serializeMerkleTree(tree: MerkleTree) {
 // }
 
 
-export function convertStringTreeLayersToBigint(layers: string[][]): MerkleTree {
+export function convertStringTreeLayersToBigint(layers: string[][]): any {
     let levels = [];
 
     for (let i = 0; i < layers.length; i++) {
