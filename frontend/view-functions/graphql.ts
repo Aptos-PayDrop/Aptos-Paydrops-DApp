@@ -1,3 +1,4 @@
+import { getFungibleAssetMetadata, setFungibleAssetMetadata } from "@/utils/browserCache";
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 
@@ -9,8 +10,16 @@ export type Fa_metadata = {
     valid: boolean
 
 }
-
 export async function query_fungible_asset_metadata(network: Network, address: string): Promise<Fa_metadata> {
+    const getCache = await getFungibleAssetMetadata(network, address);
+
+    if (getCache.success) {
+        return {
+            ...getCache.data as Fa_metadata,
+            valid: true
+        };
+    }
+
     const aptosConfig = new AptosConfig({ network });
     const aptos = new Aptos(aptosConfig);
 
@@ -43,5 +52,6 @@ export async function query_fungible_asset_metadata(network: Network, address: s
         valid: true
     }
 
+    await setFungibleAssetMetadata(network, address, result)
     return result
 }
