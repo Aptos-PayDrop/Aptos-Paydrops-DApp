@@ -4,6 +4,7 @@ import { WebAptos } from "@irys/web-upload-aptos";
 import { NETWORK } from "@/constants";
 import { WalletContextState } from "@aptos-labs/wallet-adapter-react";
 import { getAccountAPTBalance } from "@/view-functions/getAccountAPTBalance";
+import { getIrysTreeTxsByRootCache, getTreeCache, setIrysTreeTxsByRootCache, setTreeCache } from "./browserCache";
 
 const getIrys = async (aptosWallet: WalletContextState) => {
   // If dapp's network is testnet, use the devnet irys node, otherwise use the mainnet irys node
@@ -67,13 +68,23 @@ export const uploadFile = async (aptosWallet: WalletContextState, fileToUpload: 
   }
 };
 
-
-export async function fetchTreeByRoot(root: string,): Promise<{
+export async function fetchTreeByRoot(root: string): Promise<{
   found: boolean,
   data: any,
   error: string
 }> {
   try {
+
+    const getFromCache = await getIrysTreeTxsByRootCache(NETWORK, root);
+
+    if (getFromCache.success) {
+      return {
+        found: true,
+        data: getFromCache.data,
+        error: getFromCache.error
+      }
+    }
+
     const graphqlURL = NETWORK === "testnet" ? "https://devnet.irys.xyz/graphql" : "https://uploader.irys.xyz/graphql";
     // const graphqlURL = "https://uploader.irys.xyz/graphql"
     const query = `
@@ -127,7 +138,7 @@ export async function fetchTreeByRoot(root: string,): Promise<{
 
     const tags = edge.node.tags;
 
-
+    await setIrysTreeTxsByRootCache(NETWORK, root, { address, id, tags })
     return {
       found: true,
       error: "",
@@ -149,7 +160,14 @@ export function getIrysURLFromId(id: string) {
   return dataURL;
 }
 
+//
 export async function fetchMerkleTree(id: string) {
+  const fromCache = await getTreeCache(NETWORK, id)
+
+  if (fromCache.success) {
+    return fromCache.data;
+  }
+
   const dataURL = getIrysURLFromId(id);
 
   const fetchedData = await fetch(dataURL, {
@@ -159,9 +177,12 @@ export async function fetchMerkleTree(id: string) {
 
   const json = await fetchedData.json();
 
+  await setTreeCache(NETWORK, id, json);
+
   return json
 }
 
+//No caching here because the sponsor can upload new trees!
 export async function fetchTreeBySponsor(sponsor: string) {
   const graphqlURL = NETWORK === "testnet" ? "https://devnet.irys.xyz/graphql" : "https://uploader.irys.xyz/graphql";
 
