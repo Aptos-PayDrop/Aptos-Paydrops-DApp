@@ -61,7 +61,6 @@ export function CreateDropTree() {
 
   const [amountToDeposit, setAmountToDeposit] = useState(0);
 
-  //TODO: do the fee percentage
   const [feePercentage, setFeePercentage] = useState(0);
 
   const [miningProgess, setMiningProgress] = useState(0);

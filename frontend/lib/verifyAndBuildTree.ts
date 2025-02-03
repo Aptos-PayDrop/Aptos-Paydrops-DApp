@@ -13,7 +13,6 @@ export enum Progress {
     treeProgress,
 }
 
-// TODO: I need to pass decimals
 export async function verifyAndBuildTree(
     parsedCSV: Array<Array<string>>,
     decimals: number,

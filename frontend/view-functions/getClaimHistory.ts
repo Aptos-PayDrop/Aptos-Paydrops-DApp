@@ -10,7 +10,6 @@ type ClaimHistoryParameters = {
     fa_metadata: {inner: string}
 
 }
-//TODO: log this to see what is the actual return here...
 export const getClaimHistory = async ({for_address}: {for_address: string}) =>{
     const result = await aptosClient().view<[Array<ClaimHistoryParameters>]>({
         payload: {
