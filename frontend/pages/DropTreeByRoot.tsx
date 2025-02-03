@@ -24,6 +24,8 @@ import { convertStringTreeLayersToBigint, encodeForCircuit, generateMerkleProof,
 import { buildHashImplementation, computeProof, convertProofToVector, generateCommitmentHash, getSnarkArtifactsBrowserPath, hashAddressForSnark } from "@/crypto/utils";
 import { newDroptree } from "@/entry-functions/new_droptree";
 import Decimal from "decimal.js"
+import { getCalulateFee } from "@/view-functions/calculateFees";
+import { getFee } from "@/view-functions/getFee";
 
 
 type DropTree = {
@@ -59,6 +61,7 @@ export function DropTreeByRoot() {
     const [amINullified, setAmINullified] = useState(true);
     const [treeContainsMyAddress, setTreeContainsMyAddress] = useState(false)
     const [amountIcanClaim, setAmountIcanClaim] = useState(0);
+    const [feePercentage, setFeePercentage] = useState("");
     const [dropTreeDetails, setDroptreeDetails] = useState<any>({});
     const [fungibleAssetDetails, setFungibleAssetDetails] = useState<any>({});
     const [existsOnChain, setExistsOnChain] = useState(false);
@@ -120,8 +123,6 @@ export function DropTreeByRoot() {
 
                 setTreeContainsMyAddress(contains);
 
-                setAmountIcanClaim(fetchedTree.amounts[index])
-
                 setTree({ ...fetchedTree, creatorAddress })
 
                 //fetch fungible asset data
@@ -130,7 +131,15 @@ export function DropTreeByRoot() {
                 const fungible_asset_address = fetchedTree.fungible_asset_address;
                 const fa_data = await query_fungible_asset_metadata(network, fungible_asset_address);
 
+                const { finalAmount, fee: _ } = await getCalulateFee({ amount: fetchedTree.amounts[index], decimals: fa_data.decimals })
+
+                setAmountIcanClaim(finalAmount);
+
                 setFungibleAssetDetails(fa_data);
+
+                const feePercentage_ = await getFee();
+
+                setFeePercentage(feePercentage_);
 
                 setIsLoading(false);
 
@@ -411,6 +420,7 @@ export function DropTreeByRoot() {
                     totalLeaves={dropTreeDetails.total_leaves}
                     assetExplorerLink={getExplorerLinkForFA(droptree.fungible_asset_address)}
                     onEnableClicked={onEnableClicked}
+                    feePercentage={feePercentage}
                 ></DetailsCard>
                 <ShowRefundButton
                     creatorAddress={dataInfo.creatorAddress}

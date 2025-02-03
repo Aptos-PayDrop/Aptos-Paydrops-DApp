@@ -2,7 +2,7 @@ import { isAptosConnectWallet, useWallet } from "@aptos-labs/wallet-adapter-reac
 import { AccountAddress, Network } from "@aptos-labs/ts-sdk";
 
 import { Link, useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 // Internal components
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ import { Progress as ProgressIndicator } from "@/components/ui/progress";
 import { newDroptree } from "@/entry-functions/new_droptree";
 import { Checkbox } from "@/components/ui/checkbox";
 import Decimal from "decimal.js";
+import { getFee } from "@/view-functions/getFee";
 
 type MerkleTreeData = {
   addresses: string[],
@@ -50,7 +51,6 @@ export function CreateDropTree() {
 
   // If we are on Production mode, redierct to the public mint page
   const navigate = useNavigate();
-  if (IS_PROD) navigate("/", { replace: true });
 
   // Collection data entered by the user on UI
   const [fa_address, setFa_Address] = useState<string>("");
@@ -61,15 +61,12 @@ export function CreateDropTree() {
 
   const [amountToDeposit, setAmountToDeposit] = useState(0);
 
+  //TODO: do the fee percentage
   const [feePercentage, setFeePercentage] = useState(0);
 
   const [miningProgess, setMiningProgress] = useState(0);
 
   const [miningEnabled, set_miningEnabled] = useState(true);
-
-  const [miningStarted, setMiningStarted] = useState(false);
-
-  const [fileVerifySuccess, setFileVerifySuccess] = useState(false);
 
   // Internal state
 
@@ -118,6 +115,19 @@ export function CreateDropTree() {
 
   const disableCreateAssetButton =
     !fa_address || !account || merkleTree.root === undefined;
+
+
+  useEffect(() => {
+    const fetchFeePercentage = async () => {
+      const _fePercent = await getFee();
+
+      setFeePercentage(parseInt(_fePercent))
+    }
+
+    fetchFeePercentage()
+  }, [])
+
+
 
   async function handle_fa_metadata() {
 
@@ -177,10 +187,7 @@ export function CreateDropTree() {
   const onMiningSuccess = (result: any) => {
     set_miningEnabled(false);
     setMerkleTree(result);
-    console.log(result);
-    console.log("HEEERE")
 
-    setMiningStarted(false);
   }
 
   const onProgress = (progress: Progress, message: string, completed: number) => {
@@ -189,20 +196,17 @@ export function CreateDropTree() {
 
       toast_error("Failed to generate Merkle Tree");
       setMiningProgress(0)
-      setMiningStarted(false);
       return;
     }
 
     setMiningProgress(completed);
-    setMiningStarted(false);
 
   }
 
   const verifyUploadedFile = (file: File) => {
     setVerifiedEntries(0);
     setTotalEntries(0);
-    setFileVerifySuccess(false);
-    console.log("verify started");
+
     if (file.type !== "text/csv") {
 
       toast_error("Invalid File Format. Must be CSV")
@@ -230,7 +234,6 @@ export function CreateDropTree() {
 
         setUploadedFile(file);
         setParsedFile(data as Array<Array<string>>);
-        setFileVerifySuccess(true);
         set_miningEnabled(true);
       }
     }
@@ -371,7 +374,6 @@ export function CreateDropTree() {
                     <TableCell>name</TableCell>
                     <TableCell>decimals</TableCell>
                     <TableCell>symbol</TableCell>
-                    <TableCell>token_standard</TableCell>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -379,7 +381,6 @@ export function CreateDropTree() {
                     <TableCell>{fa_metadata.name}</TableCell>
                     <TableCell>{fa_metadata.decimals === 0 ? "" : fa_metadata.decimals}</TableCell>
                     <TableCell>{fa_metadata.symbol}</TableCell>
-                    <TableCell>{fa_metadata.token_standard}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -436,7 +437,6 @@ export function CreateDropTree() {
                       Verified Entries: {verifiedEntries}/{totalEntries}
 
                       <Button onClick={async () => {
-                        setMiningStarted(true);
                         toast_default("Mining started", "You need to mine the merkle tree, this may take a few moments")
 
                         await mine_merkletree()
@@ -471,7 +471,7 @@ export function CreateDropTree() {
               </>
             }
           />
-
+          {feePercentage !== 0 ? <p className="text-gray-600">A {feePercentage}% fee is deducted from each claim, excluding the refund</p> : null}
         </div>
       </div>
     </>

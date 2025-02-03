@@ -16,6 +16,7 @@ export function DetailsCard(props: {
     existsOnChain: boolean,
     amountToDepositIfNotExists: string,
     onEnableClicked: () => void,
+    feePercentage: string
 }) {
     return <Card>
         <CardHeader>
@@ -43,7 +44,7 @@ export function DetailsCard(props: {
                     {props.existsOnChain ?
                         <TableRow>
                             <TableCell>Value:</TableCell>
-                            <TableCell>Total Deposit: <strong>{props.depositedAmount}{" "}{props.faName}</strong>, Remaining value: <strong>{props.amountLeft}{" "}{props.faName}</strong>, Withdrawals left: <strong>{props.unusedLeaves}/{props.totalLeaves}</strong></TableCell>
+                            <TableCell>Total Deposit: <strong>{props.depositedAmount}{" "}{props.faName}</strong>, Remaining value: <strong>{props.amountLeft}{" "}{props.faName}</strong>, Withdrawals left: <strong>{props.unusedLeaves}/{props.totalLeaves}</strong>, Claim Fee: {props.feePercentage}%</TableCell>
                         </TableRow> : null}
 
                     {!props.existsOnChain ? <TableRow>
