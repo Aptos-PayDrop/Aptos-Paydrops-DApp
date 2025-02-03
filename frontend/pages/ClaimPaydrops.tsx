@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { fetchTreeByRoot } from "@/utils/Irys";
-import { PayDropsSpinner } from "@/components/UploadSpinner";
 import { useToast } from "@/components/ui/use-toast";
 
 
