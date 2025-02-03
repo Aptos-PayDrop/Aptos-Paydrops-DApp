@@ -2,7 +2,7 @@ import { RouterProvider, createBrowserRouter, Outlet } from "react-router-dom";
 // Internal pages
 import { ClaimPaydrops } from "@/pages/ClaimPaydrops";
 import { CreateDropTree } from "@/pages/CreateDropTree";
-import { MyHistory } from "@/pages/DropsHistory";
+import { MyHistory } from "@/pages/ClaimHistory";
 import { MyDropTrees } from "./pages/MyDroptrees";
 import { DropTreeByRoot } from "./pages/DropTreeByRoot";
 import { NotFound } from "./pages/NotFound";
