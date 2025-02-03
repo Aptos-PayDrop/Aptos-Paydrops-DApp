@@ -361,7 +361,6 @@ export function CreateDropTree() {
                 onChange={(e) => {
                   setFa_Address(e.target.value)
                 }}
-                disabled={!account}
                 type="text"
               />
               <Button onClick={() => {
@@ -383,8 +382,8 @@ export function CreateDropTree() {
                   </TableRow>
                 </TableBody>
               </Table>
-
-              <CardDescription>Import a CSV with the payment addresses and amounts and compute a Merkle Tree to upload to decentralized Storage</CardDescription>
+              <hr />
+                <strong>Import a CSV with the payment addresses and amounts and compute a Merkle Tree to upload to decentralized Storage</strong>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-start justify-between">
@@ -446,7 +445,7 @@ export function CreateDropTree() {
               </div>
               <div className="mt-2"></div>
               <ProgressIndicator value={miningProgess}></ProgressIndicator>
-              <p className="text-gray-600 mt-5">Make sure your CSV has the following first two columns:</p>
+              <p className="mt-5">Make sure your CSV has the following first two columns:</p>
               <CSVFormatExample></CSVFormatExample>
               <p className="text-gray-600">Each address will be able to withdraw only the specified amount. Duplicate addresses won't be able to withdraw twice.</p>
 
