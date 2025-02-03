@@ -1,16 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
-// Internal components
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// Internal hooks
 import { Header } from "@/components/Header";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { fetchTreeBySponsor } from "@/utils/Irys";
 import { useToast } from "@/components/ui/use-toast";
-import { Button, buttonVariants } from "@/components/ui/button";
+import {  buttonVariants } from "@/components/ui/button";
 import { PayDropsSpinner } from "@/components/UploadSpinner";
-import { CopyIcon } from "@/components/icons/copy";
+
 import { PaginationButtons } from "@/components/PaginationButtonts";
+import { ShortenRoot } from "./other/components/ShortenRoot";
 
 const PAGESIZE = 5;
 
@@ -149,14 +148,5 @@ export function MyDropTrees() {
       </Table>
     </>
   );
-}
-
-function ShortenRoot(props: { root: string, notifyClicker: CallableFunction }) {
-  return <div>
-    {props.root.substring(0, 5)}...{props.root.substring(props.root.length - 5, props.root.length)} <Button style={{ cursor: "pointer" }} onClick={() => {
-      navigator.clipboard.writeText(props.root);
-      props.notifyClicker()
-    }} size={"icon"} variant={"icon"}><CopyIcon width={20} height={20} /></Button>
-  </div>
 }
 
