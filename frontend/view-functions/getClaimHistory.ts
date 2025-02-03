@@ -7,11 +7,11 @@ type ClaimHistoryParameters = {
     sponsor: string,
     roo: string,
     amount:string,
-    fa_metadata: Object
+    fa_metadata: {inner: string}
 
 }
 //TODO: log this to see what is the actual return here...
-export const getClaimAddress = async ({for_address}: {for_address: string}) =>{
+export const getClaimHistory = async ({for_address}: {for_address: string}) =>{
     const result = await aptosClient().view<[Array<ClaimHistoryParameters>]>({
         payload: {
             function: `${AccountAddress.from(MODULE_ADDRESS)}::paydrop::get_claim_history`,
