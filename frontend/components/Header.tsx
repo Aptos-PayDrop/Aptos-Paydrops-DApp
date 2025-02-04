@@ -23,6 +23,7 @@ export function Header({ title }: { title: string }) {
           <Link className={buttonVariants({ variant: "link" })} to={"/create-droptree"}>
             Fund Paydrops
           </Link>
+          <Link className={buttonVariants({ variant: "link" })} to={"https://github.com/Aptos-PayDrop/Aptos-Paydrops-DApp"}>Learn More</Link>
         </>
 
 
