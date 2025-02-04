@@ -29,6 +29,7 @@ import { newDroptree } from "@/entry-functions/new_droptree";
 import { Checkbox } from "@/components/ui/checkbox";
 import Decimal from "decimal.js";
 import { getFee } from "@/view-functions/getFee";
+import { getUploadSuccessful, setUploadSuccessful } from "@/utils/browserCache";
 
 type MerkleTreeData = {
   addresses: string[],
@@ -261,37 +262,47 @@ export function CreateDropTree() {
   const createDropTree = async () => {
     try {
       const merkleTreeData: MerkleTreeData = { ...merkleTree, fungible_asset_address: fa_address }
-      const serializedMerkleTreeData = JSON.stringify(merkleTreeData, (_, v) => typeof v === "bigint" ? v.toString() : v);
 
-      const merkleTreeBlob = new Blob([serializedMerkleTreeData], {
-        type: "application/json"
-      })
+      const getCached = await getUploadSuccessful(NETWORK, (merkleTree.root as bigint).toString())
+      let merkleTreeUrl = "";
+
+      if (!getCached.success) {
+        const serializedMerkleTreeData = JSON.stringify(merkleTreeData, (_, v) => typeof v === "bigint" ? v.toString() : v);
+
+        const merkleTreeBlob = new Blob([serializedMerkleTreeData], {
+          type: "application/json"
+        })
 
 
-      if (!account) throw new Error("Connect wallet first");
+        if (!account) throw new Error("Connect wallet first");
 
-      setIsUploading(true);
+        setIsUploading(true);
 
+        // Check an Irys node has funded
+        const funded = await checkIfFund(aptosWallet, merkleTreeBlob.size);
+        if (!funded) throw new Error("Current account balance is not enough to fund a decentralized asset node");
 
-      // Check an Irys node has funded
-      const funded = await checkIfFund(aptosWallet, merkleTreeBlob.size);
-      if (!funded) throw new Error("Current account balance is not enough to fund a decentralized asset node");
+        //Upload merkle tree to Irys, I will add some tags to search with
+        const treeFile = new File([merkleTreeBlob], "merkletree.json", { type: "application/json" });
+        const tags: Array<{ name: string, value: string }> = [
+          { name: "Content-Type", value: "application/json" },
+          { name: "App", value: "Aptos-Paydrop" },
+          { name: "Root", value: (merkleTreeData.root as bigint).toString() },
+          { name: "Sponsor", value: account.address },
+          { name: "Leaves", value: `${merkleTreeData.leaves.length}` },
+          { name: "Fungible-Asset-Address", value: fa_address },
+          { name: "Fungible-Asset-Name", value: fa_metadata.name },
+          { name: "Total-Deposit", value: amountToDeposit.toString() },
+          { name: "Decimals", value: fa_metadata.decimals.toString() }
+        ]
+        merkleTreeUrl = await uploadFile(aptosWallet, treeFile, tags);
+      } else {
+        merkleTreeUrl = getCached.data.merkleTreeUrl
+      }
 
-      //Upload merkle tree to Irys, I will add some tags to search with
-      const treeFile = new File([merkleTreeBlob], "merkletree.json", { type: "application/json" });
-      const tags: Array<{ name: string, value: string }> = [
-        { name: "Content-Type", value: "application/json" },
-        { name: "App", value: "Aptos-Paydrop" },
-        { name: "Root", value: (merkleTreeData.root as bigint).toString() },
-        { name: "Sponsor", value: account.address },
-        { name: "Leaves", value: `${merkleTreeData.leaves.length}` },
-        { name: "Fungible-Asset-Address", value: fa_address },
-        { name: "Fungible-Asset-Name", value: fa_metadata.name },
-        { name: "Total-Deposit", value: amountToDeposit.toString() },
-        { name: "Decimals", value: fa_metadata.decimals.toString() }
-      ]
-      const merkleTreeUrl = await uploadFile(aptosWallet, treeFile, tags);
-      console.log(merkleTreeUrl)
+      // Cache that it was successfully uploaded so I don't prompt for it again. if the tx is cancelled
+      await setUploadSuccessful(NETWORK, (merkleTreeData.root as bigint).toString(), { merkleTreeUrl, merkleTreeData })
+
       // //Submit the create_dropTree entry transaction
       const inputTransaction = newDroptree({
         root: merkleTreeData.root as bigint,
@@ -302,7 +313,6 @@ export function CreateDropTree() {
         enabled: claimEnabled,
         url: merkleTreeUrl
       })
-
       const response = await signAndSubmitTransaction(
         inputTransaction
       );
@@ -318,7 +328,7 @@ export function CreateDropTree() {
       }
 
     } catch (err: any) {
-      toast_error(err.message);
+      // toast_error(err.message);
     } finally {
       setIsUploading(false);
 
