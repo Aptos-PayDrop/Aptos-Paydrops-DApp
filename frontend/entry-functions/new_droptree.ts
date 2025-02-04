@@ -4,7 +4,7 @@ import {
 
 } from "@/utils/helpers";
 import { MODULE_ADDRESS } from "@/constants";
-import {Bool, U256, U64,AccountAddress } from "@aptos-labs/ts-sdk";
+import {  U256, U64, AccountAddress } from "@aptos-labs/ts-sdk";
 
 
 type NewDropTreeArgs = {
@@ -27,7 +27,7 @@ export const newDroptree = (args: NewDropTreeArgs): InputTransactionData => {
         AccountAddress.fromString(args.fa_address),
         new U64(convertAmountFromHumanReadableToOnChain(args.total_deposit, args.total_deposit_decimals)),
         new U64(args.total_leaves),
-        new Bool(args.enabled),
+        args.enabled,
         args.url
       ]
     }
