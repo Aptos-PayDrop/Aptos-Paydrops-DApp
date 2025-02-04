@@ -3,21 +3,21 @@ import { AccountAddress, Network } from "@aptos-labs/ts-sdk";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-// Internal components
+
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WarningAlert } from "@/components/ui/warning-alert";
 import { PayDropsSpinner } from "@/components/UploadSpinner";
 import { LabeledInput } from "@/components/ui/labeled-input";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-// Internal utils
+
 import { checkIfFund, uploadFile } from "@/utils/Irys";
 import { aptosClient } from "@/utils/aptosClient";
-// Internal constants
-import { IS_PROD, NETWORK } from "@/constants";
-// Entry functions
+
+import { NETWORK } from "@/constants";
+
 import { Header } from "@/components/Header";
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
@@ -140,6 +140,7 @@ export function CreateDropTree() {
     const network = NETWORK === "testnet" ? Network.TESTNET : Network.MAINNET;
 
     const data = await query_fungible_asset_metadata(network, fa_address).catch((err) => {
+      console.error(err);
       toast_error("Unable to fetch Fungible Asset Metadata");
       setFa_metadata(FA_METADATA_DEFAULT);
       return FA_METADATA_DEFAULT;
@@ -189,7 +190,7 @@ export function CreateDropTree() {
 
   }
 
-  const onProgress = (progress: Progress, message: string, completed: number) => {
+  const onProgress = (progress: Progress, _message: string, completed: number) => {
 
     if (progress === Progress.error) {
 
@@ -383,7 +384,7 @@ export function CreateDropTree() {
                 </TableBody>
               </Table>
               <hr />
-                <strong>Import a CSV with the payment addresses and amounts and compute a Merkle Tree to upload to decentralized Storage</strong>
+              <strong>Import a CSV with the payment addresses and amounts and compute a Merkle Tree to upload to decentralized Storage</strong>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-start justify-between">

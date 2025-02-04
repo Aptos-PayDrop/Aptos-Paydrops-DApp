@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 const PAGESIZE = 10;
 export function PayDropsTable(props: { droptree: any }) {
-  const { creatorAddress, addresses, amounts, decimals, fungible_asset_address, leaves, nonce, root, tree } = props.droptree;
+  const { creatorAddress, addresses, amounts, root } = props.droptree;
 
   const { toast } = useToast();
 

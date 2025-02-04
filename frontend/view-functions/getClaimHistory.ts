@@ -1,7 +1,6 @@
-import {AccountAddress,U256} from "@aptos-labs/ts-sdk";
+import {AccountAddress} from "@aptos-labs/ts-sdk";
 import { aptosClient } from "@/utils/aptosClient";
 import { MODULE_ADDRESS } from "@/constants";
-import { Address } from "cluster";
 
 type ClaimHistoryParameters = {
     sponsor: string,

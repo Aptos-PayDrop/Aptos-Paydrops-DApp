@@ -65,7 +65,6 @@ export function DropTreeByRoot() {
     const [dropTreeDetails, setDroptreeDetails] = useState<any>({});
     const [fungibleAssetDetails, setFungibleAssetDetails] = useState<any>({});
     const [existsOnChain, setExistsOnChain] = useState(false);
-    const [disableOnCreateBtn, setDisableOnCreateBtn] = useState(false);
 
     const { toast } = useToast();
 
@@ -116,6 +115,7 @@ export function DropTreeByRoot() {
                 })
 
                 const fetchedTree = await fetchMerkleTree(id).catch((err) => {
+                    console.error(err)
                     toast_error("Failed to fetch merkle tree")
                 })
 
@@ -145,6 +145,7 @@ export function DropTreeByRoot() {
 
 
                 const dropTreeOnChainDetails = await DropTreeDetails({ sponsor: creatorAddress, root: BigInt(root) }).catch(err => {
+                    console.error(err)
                     toast_default("Not found", "Unable to fetch on-chain data. The deposit doesn't exist")
                 });
 
@@ -239,7 +240,6 @@ export function DropTreeByRoot() {
     async function onCreate() {
         if (params.tree) {
             try {
-                setDisableOnCreateBtn(true)
                 const total_deposit = sumAmounts(droptree.amounts);
                 const inputTransaction = newDroptree({
                     root: BigInt(params.tree),
@@ -264,7 +264,7 @@ export function DropTreeByRoot() {
                 console.error(err.message);
                 toast_error("An error occurred while processing the transaction")
             } finally {
-                setDisableOnCreateBtn(false);
+
             }
         }
     }

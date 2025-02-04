@@ -57,6 +57,7 @@ export async function verifyAndBuildTree(
 
 
     const { root, tree } = await generateMerkleTree(commitments, onProgress).catch((err) => {
+        console.error(err);
         onError("Mining Merkle Tree Failed");
     }).then((res: any) => {
         onProgress(Progress.miningdone, "Mining done", 100);
