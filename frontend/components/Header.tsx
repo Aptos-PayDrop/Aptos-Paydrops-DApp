@@ -1,4 +1,3 @@
-import { IS_DEV } from "@/constants";
 import { Link } from "react-router-dom";
 import { WalletSelector } from "./WalletSelector";
 import { buttonVariants } from "./ui/button";
@@ -16,16 +15,16 @@ export function Header({ title }: { title: string }) {
       </div>
 
       <div className="flex gap-2 items-center flex-wrap">
-        {IS_DEV && (
-          <>
-            <Link className={buttonVariants({ variant: "link" })} to={"/"}>
-              <Text >Claim Paydrops</Text>
-            </Link>
-            <Link className={buttonVariants({ variant: "link" })} to={"/create-droptree"}>
-              Fund Paydrops
-            </Link>
-          </>
-        )}
+
+        <>
+          <Link className={buttonVariants({ variant: "link" })} to={"/"}>
+            <Text >Claim Paydrops</Text>
+          </Link>
+          <Link className={buttonVariants({ variant: "link" })} to={"/create-droptree"}>
+            Fund Paydrops
+          </Link>
+        </>
+
 
         <WalletSelector />
       </div>
