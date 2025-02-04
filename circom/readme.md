@@ -1,3 +1,13 @@
+# APTOS PAYDROPS CIRCUITS
+The purpose of the ZKCircuits is to verify if an address and amount  is contained in a merkle tree. 
+The address, amount are used for withdrawing from a deposit inside the contract.
+To see the documentation for the contract, see [here](../contract/README.MD)
+
+The leaf of the merkle tree is computed using hash(address,amount,nonce) and the merkle tree is a fixed merkle tree with size N leaves.
+The merkle proof is 20 leves so the maximum leaves are 2^20 however inside the contracts it's capped at 500k because computing the tree takes too long.
+
+
+The circuits were developed with [NiftyZK](https://github.com/NiftyZk/niftyzk)
 # NiftyZK CLI
 **Scaffold a new Circom project, generate circuits, compile it and run Powers of Tau Phase-2 ceremonies. Generate a cosmwasm verifier contract. Supports Groth-16 with a BN128 curve**
 
@@ -41,25 +51,4 @@ After compilation, you can jump to creating the verification key and generating 
 `niftyzk vkey --final` - Get the verification key from the zkey. When omitting the final flag, the  0000.zkey will be used, this is handy when developing and iterating on ideas. To create the verification_key.json from the finalized zkey, use the --final flag.
 
 `npm run test` - You must run the scaffolded tests to proceed before generating the contracts. The tests output test proofs used for generating tests in Rust for the contracts. When developing circom circuits, always make sure the tests pass and output the required file.
-
-`niftyzk gencontract --bellman --ark --overwrite --folder[string] --circuit ` - Generate cosmwasm smart contract for verifying the zkp
-The libraries used for generating the contracts are either --bellman or --ark . 
-Specify the directory for the contracts using the --folder flag. When using the same folder, the project will be overwritten completely and so you must explicitly allow it using the --overwrite flag. 
-If you developed a custom cosmwasm contract but want to generate a new one with a new key, always use a different folder and then merge them manually!
-If your compiled circom circuit's name is not circuit.circom, specify it using the --circuit flag
-
-
-## Checking the generated contracts
-Install the wasm rust compiler backend:
-`rustup target add wasm32-unknown-unknown`
-
-Run `cargo test` to run the generated tests
-
-Build the contracts using `cargo wasm`
-
-Verify the contract.wasm using the cosmwasm-check utility
-`cargo install cosmwasm-check`
-
-`cosmwasm-check ./target/wasm32-unknown-unknown/release/contract.wasm`
-
 
