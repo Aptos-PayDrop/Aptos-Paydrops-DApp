@@ -8,7 +8,7 @@ The smart contract is opensource  with an MIT license.
 
 ## API Docs
 
-### Structs
+## Structs
 
 `DropTree`
 
@@ -36,10 +36,10 @@ Events
 
 `DropTreeEnabled` event is emitted if a droptree was created disabled, but has been enabled after
 
-### init
+## init
 the init_module function sets up the contract, it will initialzie the Config struct and the FungibleStoreController for signing.
 
-### Entry functions
+## Entry functions
 `initialize_vkey` an entry function that can be called by the @fee_manager_address, the verification key is converted into a vector and the function is called with it. It will save the verification key to global storage under the fee_manager_address
 
 `set_fee_manager` The old fee manager can assign it's address to a new one inside the config object. The purpose of this is to assign a new address that will receive the fee. This function can be only called by the @fee_manager_address that was compiled into the contract during deployment
