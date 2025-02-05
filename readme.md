@@ -70,3 +70,5 @@ To learn more about the contracts, visit the contract's [readme.md](/contract/RE
 [] Groth-16 phase-2 ceremony to finalize the circuits
 
 [] Mainnet deployment
+
+[] Indexer server, to help finding paydrops without knowing the root
