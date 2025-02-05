@@ -64,7 +64,7 @@ export function DropTreeByRoot() {
     const [feePercentage, setFeePercentage] = useState("");
     const [dropTreeDetails, setDroptreeDetails] = useState<any>({});
     const [fungibleAssetDetails, setFungibleAssetDetails] = useState<any>({});
-    const [existsOnChain, setExistsOnChain] = useState(false);
+    const [existsOnChain, setExistsOnChain] = useState(true);
 
     const { toast } = useToast();
 
@@ -155,6 +155,8 @@ export function DropTreeByRoot() {
                     console.log()
                     const isNullified = await getIsNullified({ sponsor: creatorAddress, root: BigInt(root), recipient: account?.address });
                     setAmINullified(isNullified)
+                } else {
+                    setExistsOnChain(false);
                 }
 
             } else {
