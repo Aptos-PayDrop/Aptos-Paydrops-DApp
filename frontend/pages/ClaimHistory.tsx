@@ -55,7 +55,6 @@ export function MyHistory() {
     const newMap = new Map(assetMetadata);
     //I check if the asset metadata is in the map and if not I add it, then I update state
     for (let i = 0; i < currentData.length; i++) {
-
       const fa_address = currentData[i].fa_metadata.inner;
 
       if (newMap.has(fa_address)) {
@@ -68,9 +67,13 @@ export function MyHistory() {
       const symbol = Fa_metadata.symbol;
 
       newMap.set(fa_address, { decimals, name, symbol })
+
+      //Adding a little timeout for the animation to play out
+      setTimeout(() => {
+        setAssetMetadata(newMap)
+      }, 1000)
+
     };
-    //This way it's only 1 setState call to set a page full of new tokens...
-    setAssetMetadata(newMap)
   }
 
 
