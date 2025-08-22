@@ -1,4 +1,4 @@
-// Copyright 2024 Aptos Paydrop
+// Copyright 2025 Aptos Paydrop
 // MIT LICENSE
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the Software)
@@ -18,10 +18,12 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-//Paydrop allows a sponsor to transfer to multiple addresses using a single transaction
+//This code was not vibe coded. No AI was used to develop aptos paydrops.
+
+//Paydrops allow a sponsor to transfer to multiple addresses using a single transaction
 //scaled with zkp the supported amount is 500k addresses with a single transaction
 //The use-cases are AirDrops,QuadraticFunding,Mass Payouts,Salaries
-//The deposited payments have to be pulled.
+//The deposited payments have to be pulled and they are refundable.
 
 //named addresses
 //@fee_manager_address - The address that will receive the fees
@@ -63,7 +65,7 @@ module paydrop_addr::paydrop {
         FormatG2Uncompr
     };
 
-    /// Sponsor account has not been set up to create Forest
+    /// ERRORS
     const ESPONSOR_ACCOUNT_NOT_INITIALIZED: u64 = 1000;
     const EDROPTREE_NOT_FOUND: u64 = 2000;
     const ENOT_ENOUGH_BALANCE: u64 = 3000;
@@ -110,7 +112,8 @@ module paydrop_addr::paydrop {
 
     }
 
-    //The Forest is stored per sponsor address and contains Trees
+    //The merkle trees are called DropTrees and a Tree is stored in a Forest
+    //The Forest is stored per sponsor address and contains the Trees
     struct Forest has key {
         //A single sponsor can create multiple trees
         //The trees can be accessed using the root hash of the merkle tree
@@ -341,7 +344,7 @@ module paydrop_addr::paydrop {
     public entry fun new_droptree(
         sender: &signer, //the sponsor will deposit into the droptree
         root: u256, //the root is the merkle root of the tree
-        fa_metadata: Object<Metadata>, //The address of the fungible asset selected 
+        fa_metadata: Object<Metadata>, //The address of the fungible asset selected
         total_deposit: u64, //The deposit of fungible asset
         total_leaves: u64, // the leaves deposited,
         enabled: bool, // Withdrawals are enabled,
@@ -477,8 +480,8 @@ module paydrop_addr::paydrop {
     }
 
     //Claim a paydrop by proving the sender address is contained in the merkle root
-    // The merkle root leaf is hash(sender address, withdraw amount),
-    //The remaining arguments are a circom ZKP
+    //The merkle root leaf is hash(sender address, withdraw amount),
+    //The remaining arguments are for circom ZKP
     public entry fun claim_paydrop(
         sender: &signer,
         sponsor: address,
@@ -514,7 +517,7 @@ module paydrop_addr::paydrop {
         assert!(droptree.unused_leaves != 0, ERR_NO_MORE_LEAVES);
 
         //convert proof input
-        let (a, b, c) = convert_proof_input(proof);
+         let (a, b, c) = convert_proof_input(proof);
          let public_inputs = prepare_public_signals(sender_addr, amount, root, nonce);
          let (vk_alpha, vk_beta, vk_gamma, vk_delta, vk_gamma_abc) = prepare_vkey();
 
@@ -631,7 +634,7 @@ module paydrop_addr::paydrop {
     //Returns is_nullified in bulk so I dont't have to call that funciton many times
     public fun is_nullified_bulk(sponsor: address, root: u256, checkedAddresses: vector<address>): vector<bool> acquires Forest {
         let selected_tree = tree_selector(sponsor,root);
-        
+
         let results = vector::empty();
         let addressesLength = vector::length(&checkedAddresses);
         for(iter in 0..addressesLength){
@@ -714,7 +717,7 @@ module paydrop_addr::paydrop {
             &borrow_global<FungibleStoreController>(@paydrop_addr).extend_ref
         )
     }
-    
+
     inline fun prepare_public_signals(
         sender_addr: address,
         amount: u64,
@@ -722,7 +725,7 @@ module paydrop_addr::paydrop {
         nonce: u256
     ): vector<Element<Fr>> {
         let hashedAddress_bytes = hashAddressForSnark(sender_addr);
-        
+
         let hashedAddress_uint256 = convertHashToInt(hashedAddress_bytes);
         let hashed_address_bcs = bcs::to_bytes<u256>(&hashedAddress_uint256);
 
@@ -730,7 +733,7 @@ module paydrop_addr::paydrop {
             std::option::extract(
                 &mut deserialize<Fr, FormatFrLsb>(&hashed_address_bcs)
             );
-        
+
         let castedAmount = amount as u256;
 
        let amount_bytes = bcs::to_bytes<u256>(&castedAmount);
@@ -746,7 +749,7 @@ module paydrop_addr::paydrop {
         let public4_nonce = std::option::extract(
             &mut deserialize<Fr, FormatFrLsb>(&nonce_bytes)
         );
-        
+
 
         let public_inputs: vector<Element<Fr>> = vector[public1_address,public2_amount,public4_nonce,public3_root];
 
@@ -770,7 +773,7 @@ module paydrop_addr::paydrop {
           let byte:u8 = hash[iter as u64];
           let shift: u256 = (byte as u256) << bitShift;
           accumulator += shift;
-        };  
+        };
         accumulator
     }
 
@@ -779,7 +782,7 @@ module paydrop_addr::paydrop {
         (
         Element<G1>, Element<G2>, Element<G2>, Element<G2>, vector<Element<G1>>
     ) acquires VerificationKey {
-        
+
         let raw_vkey = borrow_global<VerificationKey>(@fee_manager_address);
 
         //Deserialize into bytes
@@ -807,7 +810,7 @@ module paydrop_addr::paydrop {
         vector::append(&mut vk_gamma_bytes, vk_gamma_y1_bytes);
         vector::append(&mut vk_gamma_bytes, vk_gamma_x2_bytes);
         vector::append(&mut vk_gamma_bytes, vk_gamma_y2_bytes);
-        
+
         let vk_gamma =
             std::option::extract(&mut deserialize<G2, FormatG2Uncompr>(&vk_gamma_bytes));
 
@@ -852,7 +855,7 @@ module paydrop_addr::paydrop {
             std::option::extract(
                 &mut deserialize<G1, FormatG1Uncompr>(&vk_gamma_abc_4_bytes)
             );
-        
+
         let vk_gamma_abc_5_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_x);
         let vk_gamma_abc_5_y_bytes = bcs::to_bytes<u256>(&raw_vkey.vk_gamma_abc_5_y);
         vector::append(&mut vk_gamma_abc_5_bytes, vk_gamma_abc_5_y_bytes);
