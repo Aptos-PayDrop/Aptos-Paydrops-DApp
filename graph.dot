@@ -1,0 +1,46 @@
+# http://www.graphviz.org/content/cluster
+
+digraph G {
+  graph [fontname = "Handlee"];
+  node [fontname = "Handlee"];
+  edge [fontname = "Handlee"];
+
+  bgcolor=white;
+
+ 
+  
+  subgraph cluster_2{
+  style=filled;
+  color=lightgrey
+  
+  addr_123 -> Addresses
+  amount_10 -> Amounts
+  
+  Addresses -> CSV
+  Amounts -> CSV
+  CSV -> MerkleTree;
+  MerkleTree -> Leaf1
+  MerkleTree -> Leaf2
+  MerkleTree -> Leaf3
+  MerkleTree -> Leaf4
+  Leaf1 -> Leaf5
+  Leaf2 -> Leaf5
+  Leaf3 -> Leaf6
+  Leaf4 -> Leaf6
+  Leaf6 -> Root
+  Leaf5 -> Root
+  }
+
+  MerkleTree -> Upload_to_Irys
+  Addresses -> Upload_to_Irys
+  Amounts -> Upload_to_Irys
+
+  subgraph cluster_3{
+  Root -> Deposit
+  Deposit -> PayDrops
+  }
+  
+  
+  addr_123 -> Root-> Claim -> PayDrops
+  
+}
