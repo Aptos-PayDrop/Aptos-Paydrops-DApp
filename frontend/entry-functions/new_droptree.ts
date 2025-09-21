@@ -17,7 +17,7 @@ type NewDropTreeArgs = {
   url: string
 }
 
-
+//Creates a new droptree and makes a deposit
 export const newDroptree = (args: NewDropTreeArgs): InputTransactionData => {
   return {
     data: {

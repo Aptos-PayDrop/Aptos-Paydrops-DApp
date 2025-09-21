@@ -15,7 +15,7 @@ function Layout() {
 }
 
 
-
+//The main page routes
 const router = createBrowserRouter([
   {
     element: <Layout />,

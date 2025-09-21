@@ -7,7 +7,7 @@ type EnablePaydropArgs = {
     root: bigint
 }
 
-
+//The enable paydrop function allows the address that created the droptree to allow withdrawing
 export const enablePaydrop = (args: EnablePaydropArgs): InputTransactionData => {
     return {
         data: {

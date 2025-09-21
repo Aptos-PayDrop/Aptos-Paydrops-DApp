@@ -15,7 +15,7 @@ type ClaimDropTreeArgs = {
     nonce: bigint,
     proof: Array<bigint>
 }
-
+//The claim droptree function allows the payee to withdraw funds
 export const claimDroptree = (args: ClaimDropTreeArgs): InputTransactionData => {
     return {
         data: {
