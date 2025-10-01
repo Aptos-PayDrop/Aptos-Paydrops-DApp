@@ -5,8 +5,6 @@ Scaling to up to 500k withdraws from a single deposit
 
 ![logo](/public/logo_circular_200scale.webp)
 
-Phase-2 ceremony is hosted live at : https://ceremony.aptospaydrops.com/
-
 # AirDrops, Quadratic Funding, Payrolls and Mass Payouts
 
 ## How to use?
@@ -69,7 +67,7 @@ To learn more about the contracts, visit the contract's [readme.md](/contract/RE
 # Milestones left from the DApp
 
 
-[] Groth-16 phase-2 ceremony to finalize the circuits
+[z] Groth-16 phase-2 ceremony to finalize the circuits
 
 [] Mainnet deployment
 
