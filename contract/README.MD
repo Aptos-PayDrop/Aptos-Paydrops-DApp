@@ -20,7 +20,7 @@ Each droptree is a merkle tree and has a root.
 
 `FungibleStoreCOntroller` is a struct to hold the extend_ref to create the signer for each DropTree's Fungible Store, it's used for withdrawing
 
-`Config` is the main configuration struct that contains the fee_manager_address and the fee percentage and allows the fee_manager to set the fees.
+`Config` is the main configuration struct that contains the fee_manager_address and the fee percentage
 
 `ClaimHistory` contains `ClaimHistoryParameters` in a vector which is used for storing the claim history per claimer for easy display on the front end.
 
@@ -40,11 +40,11 @@ Events
 the init_module function sets up the contract, it will initialzie the Config struct and the FungibleStoreController for signing.
 
 ## Entry functions
-`initialize_vkey` an entry function that can be called by the @fee_manager_address, the verification key is converted into a vector and the function is called with it. It will save the verification key to global storage under the fee_manager_address
+`initialize_vkey` an entry function that can be called by the @deployer_wallet_address, the verification key is converted into a vector and the function is called with it. It will save the verification key to global storage under the deployer_wallet_address
 
-`set_fee_manager` The old fee manager can assign it's address to a new one inside the config object. The purpose of this is to assign a new address that will receive the fee. This function can be only called by the @fee_manager_address that was compiled into the contract during deployment
+`set_fee_manager` The old fee manager can assign it's address to a new one inside the config object. The purpose of this is to assign a new address that will receive the fee. This function can be only called by the @deployer_wallet_address that was compiled into the contract during deployment
 
-`set_fee` This allows the old fee_manager_address to set the fee percentage. The maximum is 25 which means a 25% fee max.
+`set_fee` This allows the deployer_wallet_address to set the fee percentage. The maximum is 5 which means a 5% fee max.
 
 `new_droptree` This function can be called by any sender that wishes to create a droptree for paydrops.
 The function must contain the root of the merkle tree, the fungible asset metadata and deposit details.

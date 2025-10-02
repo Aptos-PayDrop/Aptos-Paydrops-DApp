@@ -8,7 +8,7 @@ async function test() {
   await move.test({
     packageDirectoryPath: "contract",
      namedAddresses: {
-        fee_manager_address: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS,
+        deployer_wallet_address: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS,
         paydrop_addr: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS
       },
   });

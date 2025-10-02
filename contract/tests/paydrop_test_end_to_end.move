@@ -374,14 +374,14 @@ module paydrop_addr::test_end_to_end {
         let fee = paydrop::get_fee();
         assert!(fee == 0);
 
-        paydrop::set_fee(sender, 10);
+        paydrop::set_fee(sender, 4);
 
         fee = paydrop::get_fee();
-        assert!(fee == 10);
+        assert!(fee == 4);
 
         let (finalAmount, fee) = paydrop::calculate_fees(100);
-        assert!(finalAmount == 90);
-        assert!(fee == 10);
+        assert!(finalAmount == 96);
+        assert!(fee == 4);
 
         paydrop::set_fee(sender, 1);
         let (newFinal, newFee) = paydrop::calculate_fees(666);

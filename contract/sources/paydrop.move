@@ -26,7 +26,7 @@
 //The deposited payments have to be pulled and they are refundable.
 
 //named addresses
-//@fee_manager_address - The address that will receive the fees
+//@deployer_wallet_address - The address that will receive the fees
 //@paydrop_addr - The address of the account deploying this contract
 
 module paydrop_addr::paydrop {
@@ -223,7 +223,7 @@ module paydrop_addr::paydrop {
     /// If you deploy the module under an object, sender is the object's signer
     /// If you deploy the module under your own account, sender is your account's signer
     fun init_module(sender: &signer) {
-        init_module_internal(sender, @fee_manager_address)
+        init_module_internal(sender, @deployer_wallet_address)
     }
 
     fun init_module_internal(
@@ -259,7 +259,7 @@ module paydrop_addr::paydrop {
     //The naming convention is copied from the example for groth-16 verifier
     public entry fun initialize_vkey(sender: &signer, vkey: vector<u256>) {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
+        assert!(sender_addr == @deployer_wallet_address, ONLY_CREATOR);
         let vk_alpha_x = *vector::borrow(&vkey, 0);
         let vk_alpha_y = *vector::borrow(&vkey, 1);
 
@@ -324,7 +324,7 @@ module paydrop_addr::paydrop {
         sender: &signer, new_fee_manager: address
     ) acquires Config {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
+        assert!(sender_addr == @deployer_wallet_address, ONLY_CREATOR);
         let config = borrow_global_mut<Config>(sender_addr);
         config.fee_manager_address = new_fee_manager;
     }
@@ -332,9 +332,9 @@ module paydrop_addr::paydrop {
     // The creator can set the fees that are sent to the fee manager
     public entry fun set_fee(sender: &signer, new_fee: u64) acquires Config {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
-        //Max fee limit is 25%
-        assert!(new_fee < 25, ERR_EXCEEDS_MAX_FEE);
+        assert!(sender_addr == @deployer_wallet_address, ONLY_CREATOR);
+        //Max fee limit is 5%
+        assert!(new_fee < 5, ERR_EXCEEDS_MAX_FEE);
         let config = borrow_global_mut<Config>(sender_addr);
         config.fee = new_fee;
     }
@@ -783,7 +783,7 @@ module paydrop_addr::paydrop {
         Element<G1>, Element<G2>, Element<G2>, Element<G2>, vector<Element<G1>>
     ) acquires VerificationKey {
 
-        let raw_vkey = borrow_global<VerificationKey>(@fee_manager_address);
+        let raw_vkey = borrow_global<VerificationKey>(@deployer_wallet_address);
 
         //Deserialize into bytes
 

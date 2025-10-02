@@ -26,7 +26,7 @@ async function publish() {
       packageDirectoryPath: "contract",
       addressName: "paydrop_addr",
       namedAddresses: {
-        fee_manager_address: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS,
+        deployer_wallet_address: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS,
         paydrop_addr: process.env.VITE_MODULE_PUBLISHER_ACCOUNT_ADDRESS
       },
       extraArguments: [`--private-key=${process.env.VITE_MODULE_PUBLISHER_ACCOUNT_PRIVATE_KEY}`,`--url=${aptosSDK.NetworkToNodeAPI[process.env.VITE_APP_NETWORK]}`],
