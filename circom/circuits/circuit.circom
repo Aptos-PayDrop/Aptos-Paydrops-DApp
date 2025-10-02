@@ -37,5 +37,5 @@ template AddressAmountMerkleTreeChecker(levels){
         tree.pathIndices[i] <== pathIndices[i];
     }
 }
-//The public inputs are address,amount,root,nonceand the merkle tree is 20 leaves deep
+//The public inputs are address,amount,root,nonce and the merkle tree is 20 levels deep
 component main {public [address,amount,root,nonce]} = AddressAmountMerkleTreeChecker(20);
