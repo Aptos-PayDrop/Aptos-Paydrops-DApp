@@ -19,7 +19,7 @@ module paydrop_addr::test_end_to_end {
             @0x7e8ef4d931b6f7f55c2cfe73483d1bd4c1440d6cefb03815984ac8cb059e2927,
             drop_claimer2 =
             @0x7b97adb9c6fb626ac5ca2523f9677f4f08664a2046452111313ad1a1d6c45374,
-            fee_manager = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0
+            fee_manager = @0x1023
         )
     ]
     fun test_create_and_refund_droptree(
@@ -164,7 +164,7 @@ module paydrop_addr::test_end_to_end {
             @0xa84b5df0681d7572218e67c1a7f601cf0a6762732525e87fb7833dd7934aeb04,
             drop_claimer2 =
             @0x86608a323db743d03a4e48b939654648ee719a53449223dfbc75412d1f6d54e3,
-            fee_manager = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0
+            fee_manager = @0x1023
         )
     ]
     fun test_claimDropt(
@@ -363,7 +363,7 @@ module paydrop_addr::test_end_to_end {
     //TODO: make a test when you got 2 claims
 
     //This function just creates a contract and tests setting the fees
-    #[test(sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0, fee_manager = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0)]
+    #[test(sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0, fee_manager = @0x1023)]
     fun test_fees(sender: &signer, fee_manager: &signer) {
         let sender_addr = signer::address_of(sender);
         let fee_manager_addr = signer::address_of(fee_manager);
@@ -373,15 +373,15 @@ module paydrop_addr::test_end_to_end {
         //There should be zero fee
         let fee = paydrop::get_fee();
         assert!(fee == 0);
-        //the sender and the fee_manager are the same because otherwise set_fee throws now
-        paydrop::set_fee(sender, 4);
+
+        paydrop::set_fee(sender, 10);
 
         fee = paydrop::get_fee();
-        assert!(fee == 4);
+        assert!(fee == 10);
 
         let (finalAmount, fee) = paydrop::calculate_fees(100);
-        assert!(finalAmount == 96);
-        assert!(fee == 4);
+        assert!(finalAmount == 90);
+        assert!(fee == 10);
 
         paydrop::set_fee(sender, 1);
         let (newFinal, newFee) = paydrop::calculate_fees(666);
