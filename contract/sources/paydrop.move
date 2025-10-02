@@ -85,6 +85,7 @@ module paydrop_addr::paydrop {
     const ERR_EXCEEDS_MAX_FEE: u64 = 17000;
     const ERR_INVALID_PROOF: u64 = 18000;
     const ERR_ROOT_ALREADY_EXISTS: u64 = 19000;
+    const ERR_INVALID_ADDRESS: u64 = 20000;
     //Stores the PayDrop Tree root and withdraw parameters
     struct DropTree has store {
         //The total deposit contained in the DropTree
@@ -259,7 +260,7 @@ module paydrop_addr::paydrop {
     //The naming convention is copied from the example for groth-16 verifier
     public entry fun initialize_vkey(sender: &signer, vkey: vector<u256>) {
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
+        assert!(sender_addr == @paydrop_addr, ONLY_CREATOR);
         let vk_alpha_x = *vector::borrow(&vkey, 0);
         let vk_alpha_y = *vector::borrow(&vkey, 1);
 
@@ -320,22 +321,24 @@ module paydrop_addr::paydrop {
     }
 
     //The creator of the contact can set the fee_manager_address
+    //The fee manager gets the fees
     public entry fun set_fee_manager(
         sender: &signer, new_fee_manager: address
     ) acquires Config {
+        assert!(new_fee_manager != @0x0, ERR_INVALID_ADDRESS);
+        let config = borrow_global_mut<Config>(@paydrop_addr);
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
-        let config = borrow_global_mut<Config>(sender_addr);
+        assert!(sender_addr == config.contract_creator, ONLY_CREATOR);
         config.fee_manager_address = new_fee_manager;
     }
 
-    // The creator can set the fees that are sent to the fee manager
+    // The fee_manager can update the fees he gets
     public entry fun set_fee(sender: &signer, new_fee: u64) acquires Config {
+        let config = borrow_global_mut<Config>(@paydrop_addr);
         let sender_addr = signer::address_of(sender);
-        assert!(sender_addr == @fee_manager_address, ONLY_CREATOR);
-        //Max fee limit is 25%
-        assert!(new_fee < 25, ERR_EXCEEDS_MAX_FEE);
-        let config = borrow_global_mut<Config>(sender_addr);
+        assert!(sender_addr == config.fee_manager_address, ONLY_CREATOR);
+        //Max fee limit is 5%
+        assert!(new_fee < 5, ERR_EXCEEDS_MAX_FEE);
         config.fee = new_fee;
     }
 
@@ -783,7 +786,7 @@ module paydrop_addr::paydrop {
         Element<G1>, Element<G2>, Element<G2>, Element<G2>, vector<Element<G1>>
     ) acquires VerificationKey {
 
-        let raw_vkey = borrow_global<VerificationKey>(@fee_manager_address);
+        let raw_vkey = borrow_global<VerificationKey>(@paydrop_addr);
 
         //Deserialize into bytes
 
