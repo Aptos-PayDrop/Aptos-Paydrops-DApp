@@ -336,7 +336,7 @@ module paydrop_addr::test_end_to_end {
 
        assert!(claimerNullified);
 
-        //TODO: Test the balances of the account
+        //test the balances of the account 
         let claimer_balance = primary_fungible_store::balance(claimer_address,fa_metadata_object);
         
         assert!(claimer_balance == 10);
@@ -360,7 +360,7 @@ module paydrop_addr::test_end_to_end {
 
     }
 
-    //TODO: make a test when you got 2 claims, but then there is 
+    //TODO: make a test when you got 2 claims
 
     //This function just creates a contract and tests setting the fees
     #[test(sender = @0x1278fc8a6671b9cc775809a48d26a4cf5fc8ac10005edfadbe1b65d299b016b0, fee_manager = @0x1023)]
@@ -389,7 +389,7 @@ module paydrop_addr::test_end_to_end {
         assert!(newFee == 6);
     }
 
-    //TODO: make all the error tests!
+    //TODO: make all the error tests! Assert that the errors occur
 }
 //  console.log
 //     [
